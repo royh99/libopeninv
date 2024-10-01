@@ -22,6 +22,8 @@
 #include <libopencm3/stm32/usart.h>
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/dma.h>
+#include <libopencm3/stm32/dmamux.h>
+#include <libopencm3/cm3/nvic.h>							
 #include "terminal.h"
 #include "printf.h"
 
@@ -33,10 +35,9 @@
 
 const Terminal::HwInfo Terminal::hwInfo[] =
 {
-   { USART1, DMA1, DMA_CHANNEL4, DMA_CHANNEL5, GPIOA, GPIO_USART1_TX, GPIOB, GPIO_USART1_RE_TX },
-   { USART2, DMA1, DMA_CHANNEL7, DMA_CHANNEL6, GPIOA, GPIO_USART2_TX, GPIOD, GPIO_USART2_RE_TX },
-   { USART3, DMA1, DMA_CHANNEL2, DMA_CHANNEL3, GPIOB, GPIO_USART3_TX, GPIOC, GPIO_USART3_PR_TX },
-   { UART4,  DMA2, DMA_CHANNEL5, DMA_CHANNEL3, GPIOC, GPIO_UART4_TX,  GPIOC, GPIO_UART4_TX },
+	{ USART1, DMA1, DMA_CHANNEL4, DMA_CHANNEL5, DMAMUX_CxCR_DMAREQ_ID_UART1_TX, DMAMUX_CxCR_DMAREQ_ID_UART1_RX, GPIOA, GPIO9  | GPIO10, GPIOC, GPIO4 | GPIO5 },
+    { USART2, DMA1, DMA_CHANNEL7, DMA_CHANNEL6, DMAMUX_CxCR_DMAREQ_ID_UART2_TX, DMAMUX_CxCR_DMAREQ_ID_UART2_RX, GPIOA, GPIO14 | GPIO15, GPIOD, GPIO5 | GPIO6 },
+	{ USART3, DMA1, DMA_CHANNEL2, DMA_CHANNEL3, DMAMUX_CxCR_DMAREQ_ID_UART3_TX, DMAMUX_CxCR_DMAREQ_ID_UART3_RX, GPIOB, GPIO10 | GPIO11, GPIOC, GPIO10 | GPIO11 },
 };
 
 Terminal* Terminal::defaultTerminal;
@@ -65,32 +66,41 @@ Terminal::Terminal(uint32_t usart, const TERM_CMD* commands, bool remap, bool ec
 
    defaultTerminal = this;
 
-   gpio_set_mode(remap ? hw->port_re : hw->port, GPIO_MODE_OUTPUT_50_MHZ,
-               GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, remap ? hw->pin_re : hw->pin);
-
+   gpio_mode_setup(remap ? hw->port_re : hw->port, GPIO_MODE_AF, GPIO_PUPD_NONE, remap ? hw->pin_re : hw->pin);
+   gpio_set_af(remap ? hw->port_re : hw->port, GPIO_AF7, remap ? hw->pin_re : hw->pin);
+	
    usart_set_baudrate(usart, USART_BAUDRATE);
    usart_set_databits(usart, 8);
-   usart_set_stopbits(usart, USART_STOPBITS_2);
+   usart_set_stopbits(usart, USART_STOPBITS_1);
    usart_set_mode(usart, USART_MODE_TX_RX);
    usart_set_parity(usart, USART_PARITY_NONE);
    usart_set_flow_control(usart, USART_FLOWCONTROL_NONE);
    usart_enable_rx_dma(usart);
    usart_enable_tx_dma(usart);
 
-   dma_channel_reset(hw->dmactl, hw->dmatx);
-   dma_set_read_from_memory(hw->dmactl, hw->dmatx);
-   dma_set_peripheral_address(hw->dmactl, hw->dmatx, (uint32_t)&USART_DR(usart));
-   dma_set_peripheral_size(hw->dmactl, hw->dmatx, DMA_CCR_PSIZE_8BIT);
-   dma_set_memory_size(hw->dmactl, hw->dmatx, DMA_CCR_MSIZE_8BIT);
-   dma_enable_memory_increment_mode(hw->dmactl, hw->dmatx);
-
-   dma_channel_reset(hw->dmactl, hw->dmarx);
-   dma_set_peripheral_address(hw->dmactl, hw->dmarx, (uint32_t)&USART_DR(usart));
-   dma_set_peripheral_size(hw->dmactl, hw->dmarx, DMA_CCR_PSIZE_8BIT);
-   dma_set_memory_size(hw->dmactl, hw->dmarx, DMA_CCR_MSIZE_8BIT);
-   dma_enable_memory_increment_mode(hw->dmactl, hw->dmarx);
-   dma_enable_channel(hw->dmactl, hw->dmarx);
-
+   dma_disable_channel(DMA1, hw->dmatx);
+   dma_channel_reset(DMA1, hw->dmatx);
+   dma_set_read_from_memory(DMA1, hw->dmatx);
+   dma_set_peripheral_address(DMA1, hw->dmatx, (uint32_t)&USART_TDR(usart));
+   dma_set_peripheral_size(DMA1, hw->dmatx, DMA_CCR_PSIZE_8BIT);
+   dma_set_memory_size(DMA1, hw->dmatx, DMA_CCR_MSIZE_8BIT);
+   dma_enable_memory_increment_mode(DMA1, hw->dmatx);
+   dmamux_reset_dma_channel(DMAMUX1,  hw->dmatx);
+   dmamux_set_dma_channel_request(DMAMUX1, hw->dmatx, hw->dmamuxtx ); // set TX mux ID.
+   //dma_clear_interrupt_flags(DMA1, hw->dmatx, DMA_TCIF);
+   dma_enable_channel(DMA1, hw->dmatx);	
+	
+   dma_disable_channel(DMA1, hw->dmarx);
+   dma_channel_reset(DMA1, hw->dmarx);
+   dma_set_read_from_peripheral(DMA1, hw->dmarx);
+   dma_set_peripheral_address(DMA1, hw->dmarx, (uint32_t)&USART_RDR(usart));
+   dma_set_peripheral_size(DMA1, hw->dmarx, DMA_CCR_PSIZE_8BIT);
+   dma_set_memory_size(DMA1, hw->dmarx, DMA_CCR_MSIZE_8BIT);
+   dma_enable_memory_increment_mode(DMA1, hw->dmarx);
+   dmamux_reset_dma_channel(DMAMUX1,  hw->dmarx);
+   dmamux_set_dma_channel_request(DMAMUX1, hw->dmarx, hw->dmamuxrx ); 	 // set RX mux ID.
+   //dma_clear_interrupt_flags(DMA1, hw->dmarx, DMA_TCIF);
+   dma_enable_channel(DMA1, hw->dmarx);
    ResetDMA();
 
    usart_enable(usart);
@@ -241,7 +251,7 @@ void Terminal::SendBinary(const uint32_t* data, uint32_t len)
 
 bool Terminal::KeyPressed()
 {
-   return usart_get_flag(usart, USART_SR_RXNE);
+   return usart_get_flag(usart, USART_FLAG__RXNE);
 }
 
 void Terminal::FlushInput()
@@ -252,16 +262,18 @@ void Terminal::FlushInput()
 void Terminal::DisableTxDMA()
 {
    txDmaEnabled = false;
-   dma_disable_channel(hw->dmactl, hw->dmatx);
+   dma_disable_channel(DMA1, hw->dmatx);
    usart_disable_tx_dma(usart);
 }
 
 void Terminal::ResetDMA()
 {
-   dma_disable_channel(hw->dmactl, hw->dmarx);
-   dma_set_memory_address(hw->dmactl, hw->dmarx, (uint32_t)inBuf);
-   dma_set_number_of_data(hw->dmactl, hw->dmarx, bufSize);
-   dma_enable_channel(hw->dmactl, hw->dmarx);
+   dma_disable_channel(DMA1, hw->dmarx);
+   dma_set_memory_address(DMA1, hw->dmarx, (uint32_t)inBuf);
+   dma_set_number_of_data(DMA1, hw->dmarx, bufSize);
+   dmamux_reset_dma_channel(DMAMUX1,  hw->dmarx);
+   dmamux_set_dma_channel_request(DMAMUX1, hw->dmarx, hw->dmamuxrx );											   
+   dma_enable_channel(hw->DMA1, hw->dmarx);
 }
 
 void Terminal::EnableUart(char* arg)
@@ -272,15 +284,15 @@ void Terminal::EnableUart(char* arg)
    if (val == nodeId)
    {
       enabled = true;
-      gpio_set_mode(remap ? hw->port_re : hw->port, GPIO_MODE_OUTPUT_50_MHZ,
-               GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, remap ? hw->pin_re : hw->pin);
+      gpio_mode_setup(remap ? hw->port_re : hw->port, GPIO_MODE_OUTPUT,
+      GPIO_PUPD_NONE, remap ? hw->pin_re : hw->pin);
       Send("OK\r\n");
    }
    else
    {
       enabled = false;
-      gpio_set_mode(remap ? hw->port_re : hw->port, GPIO_MODE_INPUT,
-               GPIO_CNF_INPUT_FLOAT, remap ? hw->pin_re : hw->pin);
+      gpio_mode_setup(remap ? hw->port_re : hw->port, GPIO_MODE_INPUT,
+               GPIO_PUPD_NONE, remap ? hw->pin_re : hw->pin);
    }
 }
 
@@ -341,14 +353,15 @@ void Terminal::Send(const char *str)
 
 void Terminal::SendCurrentBuffer(uint32_t len)
 {
-   while (!dma_get_interrupt_flag(hw->dmactl, hw->dmatx, DMA_TCIF) && !firstSend);
-
-   dma_disable_channel(hw->dmactl, hw->dmatx);
-   dma_set_number_of_data(hw->dmactl, hw->dmatx, len);
-   dma_set_memory_address(hw->dmactl, hw->dmatx, (uint32_t)outBuf[curBuf]);
-   dma_clear_interrupt_flags(hw->dmactl, hw->dmatx, DMA_TCIF);
-   dma_enable_channel(hw->dmactl, hw->dmatx);
-
+   while (!dma_get_interrupt_flag(DMA1, hw->dmatx, DMA_TCIF) && !firstSend);
+	
+   dma_disable_channel(DMA1, hw->dmatx);
+   dma_set_number_of_data(DMA1, hw->dmatx, len);
+   dma_set_memory_address(DMA1, hw->dmatx, (uint32_t)outBuf[curBuf]);
+   dma_clear_interrupt_flags(DMA1, hw->dmatx, DMA_TCIF);
+   dmamux_reset_dma_channel(DMAMUX1,  hw->dmarx);
+   dmamux_set_dma_channel_request(DMAMUX1, hw->dmarx, hw->dmamuxrx );
+   dma_enable_channel(DMA1, hw->dmatx);								 
    curBuf = !curBuf; //switch buffers
    firstSend = false; //only needed once so we don't get stuck in the while loop above
 }

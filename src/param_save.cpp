@@ -45,10 +45,11 @@ typedef struct
 
 static uint32_t GetFlashAddress()
 {
-   uint32_t flashSize = desig_get_flash_size();
+ // uint32_t flashSize = desig_get_flash_size();
 
    //Always save parameters to last flash page
-   return FLASH_BASE + flashSize * 1024 - PARAM_BLKNUM * PARAM_BLKSIZE;
+   //FLASH_BASE + flashSize * 1024 - PARAM_BLKNUM * PARAM_BLKSIZE;
+	return FLASH_CONF_BASE + PARAM_BLKOFFSET;
 }
 
 /**
@@ -61,10 +62,11 @@ uint32_t parm_save()
    PARAM_PAGE parmPage;
    uint32_t idx;
    uint32_t paramAddress = GetFlashAddress();
-   uint32_t check = 0xFFFFFFFF;
-   uint32_t* baseAddress = (uint32_t*)paramAddress;
+   uint8_t flashpage = (paramAddress - 0x80000000) / 2048;
+   uint64_t check = 0xFFFFFFFFFFFFFFFF;
+   uint64_t* baseAddress = (uint64_t*)paramAddress;
 
-   for (int i = 0; i < PARAM_WORDS; i++, baseAddress++)
+   for (int i = 0; i < (PARAM_WORDS+1)/2; i++, baseAddress++)
       check &= *baseAddress;
 
    crc_reset();
@@ -85,14 +87,18 @@ uint32_t parm_save()
    parmPage.crc = crc_calculate_block(((uint32_t*)&parmPage), (2 * NUM_PARAMS));
    flash_unlock();
 
-   if (check != 0xFFFFFFFF)
-      flash_erase_page(paramAddress);
-
-   for (idx = 0; idx < PARAM_WORDS; idx++)
+   if (check != 0xFFFFFFFFFFFFFFFF)
    {
-      uint32_t* pData = ((uint32_t*)&parmPage) + idx;
-      flash_program_word(paramAddress + idx * sizeof(uint32_t), *pData);
+	  flash_clear_status_flags();
+      flash_erase_page(flashpage);
    }
+
+    for (idx = 0; idx < (PARAM_WORDS+1)/2; idx++)
+	{
+		//uint32_t* pData = ((uint32_t*)&parmPage) + idx;	This is for F1 / F4
+		uint64_t* pData = ((uint64_t*)&parmPage) + idx; // This appears to works 
+		flash_clear_status_flags();
+		flash_program_double_word(paramAddress + idx * sizeof(uint64_t), *pData);
    flash_lock();
    return parmPage.crc;
 }

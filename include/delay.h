@@ -27,8 +27,8 @@
 inline void uDelay(int period)
 {
     // Empirically determined constant by measurement of GPIO toggle
-    // of 1000 uS delay on a 72MHz STM32F103 processor
-    static const int CyclesPerMicroSecond = 12;
+    // of 1000 uS delay on a 96MHz STM32Gxxx processor
+    static const int CyclesPerMicroSecond = 16;
 
     int iterations = period * CyclesPerMicroSecond;
 

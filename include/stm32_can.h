@@ -32,7 +32,7 @@ public:
    void SetBaudrate(enum baudrates baudrate);
    void Send(uint32_t canId, uint32_t data[2], uint8_t len);
    void HandleTx();
-   void HandleMessage(int fifo);
+   void HandleMessage();
    static Stm32Can* GetInterface(int index);
 
 private:
@@ -48,9 +48,9 @@ private:
    uint32_t canDev;
 
    void ConfigureFilters();
-   void SetFilterBank(int& idIndex, int& filterId, uint16_t* idList);
-   void SetFilterBankMask(int& idIndex, int& filterId, uint16_t* idMaskList);
-   void SetFilterBank29(int& idIndex, int& filterId, uint32_t* idList);
+   void SetFilterBank(int& idIndex, uint32_t& filterId, uint32_t* idList);
+   void SetFilterBankMask(int& idIndex, uint32_t& filterId, uint32_t* idMaskList);
+   void SetFilterBank29(int& idIndex, uint32_t& filterId, uint32_t* idList);
    uint32_t GetFlashAddress();
 
    static Stm32Can* interfaces[];

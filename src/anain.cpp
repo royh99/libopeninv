@@ -20,6 +20,7 @@
  */
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/dma.h>
+#include <libopencm3/stm32/dmamux.h>									
 #include <libopencm3/stm32/adc.h>
 #include "anain.h"
 #include "my_math.h"
@@ -60,25 +61,28 @@ void AnaIn::Start()
 
    for (int i = 0; i < ADC_COUNT; i++)
    {
-      adc_power_off(adc[i]);
-      adc_enable_scan_mode(adc[i]);
+      adc_set_clk_source(adc[i], ADC_CCR_CKMODE_DIV2); // ADC clk AHB/2 = 48MHz
+      adc_disable_deeppwd(adc[i]); // Connect VDDA and VREF+
+      adc_enable_regulator(adc[i]);	// enable ADC voltage regulator	
+      adc_power_off(adc[i]);						 
+      adc_calibrate(adc[i]); //cal adc and wait until it finishes 
+      adc_disable_vrefint(); // use VDDA for ref
       adc_set_continuous_conversion_mode(adc[i]);
       adc_set_right_aligned(adc[i]);
       adc_set_sample_time_on_all_channels(adc[i], SAMPLE_TIME);
-      adc_power_on(adc[i]);
-      adc_reset_calibration(adc[i]);
-      adc_calibrate(adc[i]);
       adc_set_regular_sequence(adc[i], ANA_IN_COUNT / ADC_COUNT, channel_array[i]);
-      adc_enable_dma(adc[i]);
+      adc_enable_dma_circular_mode(adc[i]);
       adc_enable_external_trigger_regular(adc[i], ADC_CR2_EXTSEL_SWSTART);
    }
 
    dma_set_peripheral_address(DMA1, ADC_DMA_CHAN, (uint32_t)&ADC_DR(ADC1));
    dma_set_memory_address(DMA1, ADC_DMA_CHAN, (uint32_t)values);
-   dma_set_peripheral_size(DMA1, ADC_DMA_CHAN, TRANSFER_PSIZE);
-   dma_set_memory_size(DMA1, ADC_DMA_CHAN, TRANSFER_MSIZE);
-   dma_set_number_of_data(DMA1, ADC_DMA_CHAN, NUM_SAMPLES * ANA_IN_COUNT / ADC_COUNT);
+   dma_set_peripheral_size(DMA1, ADC_DMA_CHAN, DMA_CCR_PSIZE_16BIT);
+   dma_set_memory_size(DMA1, ADC_DMA_CHAN, DMA_CCR_MSIZE_16BIT);
+   dma_set_number_of_data(DMA1, ADC_DMA_CHAN, NUM_SAMPLES * ANA_IN_COUNT);
    dma_enable_memory_increment_mode(DMA1, ADC_DMA_CHAN);
+   dmamux_reset_dma_channel(DMAMUX1,  ADC_DMA_CHAN);
+   dmamux_set_dma_channel_request(DMAMUX1, ADC_DMA_CHAN, DMAMUX_CxCR_DMAREQ_ID_ADC1 ); 
    dma_enable_circular_mode(DMA1, ADC_DMA_CHAN);
    dma_enable_channel(DMA1, ADC_DMA_CHAN);
 
@@ -161,34 +165,38 @@ int AnaIn::median3(int a, int b, int c)
 uint8_t AnaIn::AdcChFromPort(uint32_t command_port, int command_bit)
 {
     /*
-     PA0 ADC12_IN0
-     PA1 ADC12_IN1
-     PA2 ADC12_IN2
-     PA3 ADC12_IN3
-     PA4 ADC12_IN4
-     PA5 ADC12_IN5
-     PA6 ADC12_IN6
-     PA7 ADC12_IN7
-     PB0 ADC12_IN8
-     PB1 ADC12_IN9
-     PC0 ADC12_IN10
-     PC1 ADC12_IN11
-     PC2 ADC12_IN12
-     PC3 ADC12_IN13
-     PC4 ADC12_IN14
-     PC5 ADC12_IN15
+	 PA0 ADC12_IN1
+     PA1 ADC12_IN2
+     PA2 ADC1_IN3
+     PA3 ADC1_IN4
+	 
+     PB0 ADC1_IN15
+	 PB1 ADC12_IN12
+     PB11 ADC1_IN14
+	 PB12 ADC1_IN11
+     PB14 ADC1_IN5
+     PC0 ADC12_IN6
+     PC1 ADC12_IN7
+     PC2 ADC12_IN8
+     PC3 ADC12_IN9
+     PF0 ADC1_IN10 this is used for HSE crystal, so is not available
+	 
      temp ADC12_IN16
      */
     switch (command_port)
     {
     case GPIOA: /* port A */
-        if (command_bit<8) return command_bit;
+        if (command_bit<4) return command_bit+1;
         break;
     case GPIOB: /* port B */
-        if (command_bit<2) return command_bit+8;
+        if (command_bit==0) return 15;
+		else if (command_bit==1) return 12;
+		else if (command_bit==11) return 14;
+		else if (command_bit==12) return 11;
+		else if (command_bit==14) return 5;
         break;
     case GPIOC: /* port C */
-        if (command_bit<6) return command_bit+10;
+        if (command_bit<4) return command_bit+6;
         break;
     }
     adc_enable_temperature_sensor();

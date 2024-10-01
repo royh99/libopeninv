@@ -30,7 +30,7 @@ DIG_IO_LIST
 void DigIo::Configure(uint32_t port, uint16_t pin, PinMode::PinMode pinMode)
 {
    uint8_t mode = GPIO_MODE_INPUT;
-   uint8_t cnf = GPIO_CNF_INPUT_PULL_UPDOWN;
+   uint8_t pull = GPIO_PUPD_NONE;
    uint16_t val = DIG_IO_OFF;
 
    _port = port;
@@ -40,22 +40,20 @@ void DigIo::Configure(uint32_t port, uint16_t pin, PinMode::PinMode pinMode)
    {
       default:
       case PinMode::INPUT_PD:
-         /* use defaults */
+         pull = GPIO_PUPD_PULLDOWN;
          break;
       case PinMode::INPUT_PU:
-         val = DIG_IO_ON;
+         pull = GPIO_PUPD_PULLUP;
          break;
       case PinMode::INPUT_FLT:
-         cnf = GPIO_CNF_INPUT_FLOAT;
          break;
       case PinMode::INPUT_AIN:
-         cnf = GPIO_CNF_INPUT_ANALOG;
+         /* use defaults */
          break;
       case PinMode::OUTPUT:
-         mode = GPIO_MODE_OUTPUT_50_MHZ;
-         cnf = GPIO_CNF_OUTPUT_PUSHPULL;
+         mode = GPIO_MODE_OUTPUT;
          break;
-      case PinMode::OUTPUT_OD:
+/*       case PinMode::OUTPUT_OD:
          mode = GPIO_MODE_OUTPUT_50_MHZ;
          cnf = GPIO_CNF_OUTPUT_OPENDRAIN;
          val = DIG_IO_ON;
@@ -63,13 +61,13 @@ void DigIo::Configure(uint32_t port, uint16_t pin, PinMode::PinMode pinMode)
       case PinMode::OUTPUT_ALT:
          mode = GPIO_MODE_OUTPUT_50_MHZ;
          cnf = GPIO_CNF_OUTPUT_ALTFN_PUSHPULL;
-         break;
+         break; */
    }
 
    if (DIG_IO_ON == val)
    {
       gpio_set(port, pin);
    }
-   gpio_set_mode(port, mode, cnf, pin);
+   gpio_mode_setup(port, mode, pull, pin);
 }
 
