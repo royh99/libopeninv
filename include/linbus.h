@@ -37,6 +37,8 @@ class LinBus
          uint32_t usart;
          uint8_t dmatx;
          uint8_t dmarx;
+		 uint8_t dmamuxtx;
+		 uint8_t dmamuxrx;
          uint32_t port;
          uint16_t pin;
       };

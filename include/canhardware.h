@@ -73,7 +73,7 @@ class CanHardware
       uint32_t GetLastRxTimestamp() { return lastRxTimestamp; }
 
    protected:
-      uint32_t userIds[MAX_USER_MESSAGES];
+      uint16_t userIds[MAX_USER_MESSAGES];
       uint32_t userMasks[MAX_USER_MESSAGES];
       int nextUserMessageIndex;
       uint32_t lastRxTimestamp;

@@ -392,21 +392,21 @@ int CanMap::Remove(bool rx, uint8_t messageIdx, uint8_t itemidx)
 void CanMap::Save()
 {
    uint32_t crc;
-   uint32_t check = 0xFFFFFFFF;
+   uint64_t check = 0xFFFFFFFFFFFFFFFF;
    uint32_t baseAddress = GetFlashAddress();
-   uint32_t *checkAddress = (uint32_t*)baseAddress;
+   uint64_t *checkAddress = (uint64_t *)baseAddress;
 
    isSaving = true;
 
-   for (int i = 0; i < FLASH_PAGE_SIZE / 4; i++, checkAddress++)
+   for (int i = 0; i < FLASH_PAGE_SIZE / 8; i++, checkAddress++)
       check &= *checkAddress;
 
    crc_reset();
 
    flash_unlock();
-   flash_set_ws(2);
+   flash_set_ws(3);
 
-   if (check != 0xFFFFFFFF) //Only erase when needed
+   if (check != 0xFFFFFFFFFFFFFFFF) //Only erase when needed
       flash_erase_page(baseAddress);
 
    ReplaceParamEnumByUid(canSendMap);
@@ -623,16 +623,24 @@ uint32_t CanMap::SaveToFlash(uint32_t baseAddress, uint32_t* data, int len)
  */
 int CanMap::LoadFromFlash()
 {
-   uint32_t baseAddress = GetFlashAddress();
-   uint32_t storedCrc = *(uint32_t*)CRC_ADDRESS(baseAddress);
+   uint64_t baseAddress = GetFlashAddress();
+   uint32_t storedCrc = *(uint64_t*)CRC_ADDRESS(baseAddress);
    uint32_t crc;
 
    crc_reset();
-   crc = crc_calculate_block((uint32_t*)baseAddress, SENDMAP_WORDS + RECVMAP_WORDS + POSMAP_WORDS);
+	crc = crc32_64((uint64_t*)baseAddress, ((SENDMAP_WORDS + RECVMAP_WORDS + POSMAP_WORDS)+1)/2); // calc 32 bit crc from 64 bits read from flash
+
+   //crc = crc_calculate_block((uint32_t*)baseAddress, SENDMAP_WORDS + RECVMAP_WORDS + POSMAP_WORDS);
 
    if (storedCrc == crc)
    {
-      memcpy32((int*)canSendMap, (int*)SENDMAP_ADDRESS(baseAddress), SENDMAP_WORDS);
+     // memcpy32((int*)canSendMap, (int*)SENDMAP_ADDRESS(baseAddress), SENDMAP_WORDS);
+	  uint64_t src_address;
+	     for ( uint32_t i = 0; i < (SENDMAP_WORDS+1)/2; i++)
+         {
+	        src_address = *(uint64_t*)(SENDMAP_ADDRESS(baseAddress)+i); // read 64 bit data from flash
+	        memcpy32((int*)canRecvMap, (int*)src_address, 2); // copy 2 x words to can map
+         }
       memcpy32((int*)canRecvMap, (int*)RECVMAP_ADDRESS(baseAddress), RECVMAP_WORDS);
       memcpy32((int*)canPosMap, (int*)POSMAP_ADDRESS(baseAddress), POSMAP_WORDS);
       ReplaceParamUidByEnum(canSendMap);
@@ -680,12 +688,14 @@ int CanMap::LegacyLoadFromFlash()
       }
    };
 
-   uint32_t data = GetFlashAddress();
-   const int size = sizeof(LEGACY_CANIDMAP) * LEGACY_MAX_MESSAGES * 2;
+   uint64_t data = GetFlashAddress();
+   const int size = ((sizeof(LEGACY_CANIDMAP) * LEGACY_MAX_MESSAGES)+1) * 2; //round up number of words to int of 64 bits
    uint32_t storedCrc = *(uint32_t*)(data + size);
-
+   
    crc_reset();
-   uint32_t crc = crc_calculate_block((uint32_t*)data, size / 4);
+   uint32_t	crc = crc32_64((uint64_t*)data, size / 8); // calc 32 bit crc from 64 bits read from flash
+ 
+   //uint32_t crc = crc_calculate_block((uint32_t*)data, size / 4);
 
    if (storedCrc == crc)
    {
@@ -709,11 +719,23 @@ CanMap::CANIDMAP* CanMap::FindById(CANIDMAP *canMap, uint32_t canId)
 
 uint32_t CanMap::GetFlashAddress()
 {
-   uint32_t flashSize = desig_get_flash_size();
+   //uint32_t flashSize = desig_get_flash_size();
 
-   return FLASH_BASE + flashSize * 1024 - FLASH_PAGE_SIZE * CAN1_BLKNUM;
+   return 0x80004000; //FLASH_BASE + flashSize * 1024 - FLASH_PAGE_SIZE * CAN1_BLKNUM;
 }
 
+// For 64-bit values
+// Accumulate using two 32-bit operations 
+uint32_t CanMap::crc32_64(uint64_t *data, int size) // generate 32 bit crc from 64 bit input
+{
+	for (int i = 0; i < size; i++)   // 
+	{
+		uint64_t data64 = data[i]; // read 64 bit data from flash
+		CRC_DR = (uint32_t)data64;
+		CRC_DR = (uint32_t)(data64>>32);
+	}
+	return CRC_DR;
+}
 void CanMap::ReplaceParamEnumByUid(CANIDMAP *canMap)
 {
    forEachCanMap(curMap, canMap)
