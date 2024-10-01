@@ -20,7 +20,7 @@
  */
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/dma.h>
-#include <libopencm3/stm32/dmamux.h>									
+#include <libopencm3/stm32/dmamux.h>
 #include <libopencm3/stm32/adc.h>
 #include "anain.h"
 #include "my_math.h"
@@ -72,7 +72,10 @@ void AnaIn::Start()
       adc_set_sample_time_on_all_channels(adc[i], SAMPLE_TIME);
       adc_set_regular_sequence(adc[i], ANA_IN_COUNT / ADC_COUNT, channel_array[i]);
       adc_enable_dma_circular_mode(adc[i]);
-      adc_enable_external_trigger_regular(adc[i], ADC_CR2_EXTSEL_SWSTART);
+      adc_enable_external_trigger_regular(adc[i], ADC12_CFGR1_EXTSEL_TIM1_CC1, ADC_JSQR_JEXTEN_DISABLED);
+	  //adc_enable_external_trigger_regular(uint32_t adc, uint32_t trigger, uint32_t polarity);
+      adc_enable_dma(adc[i]);
+      adc_power_on(adc[i]); // aden=1. Power on and wait until complete	
    }
 
    dma_set_peripheral_address(DMA1, ADC_DMA_CHAN, (uint32_t)&ADC_DR(ADC1));
@@ -94,7 +97,7 @@ void AnaIn::Start()
 
 void AnaIn::Configure(uint32_t port, uint8_t pin)
 {
-   gpio_set_mode(port, GPIO_MODE_INPUT, GPIO_CNF_INPUT_ANALOG, 1 << pin);
+   gpio_mode_setup(port, GPIO_MODE_ANALOG, GPIO_PUPD_NONE, 1 << pin);
 
    #if ADC_COUNT == 1
    channel_array[0][GetIndex()] = AdcChFromPort(port, pin);

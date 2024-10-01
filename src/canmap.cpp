@@ -605,13 +605,15 @@ uint32_t CanMap::SaveToFlash(uint32_t baseAddress, uint32_t* data, int len)
 {
    uint32_t crc = 0;
 
-   for (int idx = 0; idx < len; idx++)
+   for (int idx = 0; idx < ((len+1)/2); idx++) // will crc be correct if odd number of words??
    {
-      crc = crc_calculate(*data);
-      flash_program_word(baseAddress + idx * sizeof(uint32_t), *data);
-      data++;
+		crc_calculate(*data); // calculate crc of two consecutive words
+		crc = crc_calculate(*(data+1));
+		flash_clear_status_flags();
+		flash_program_double_word(baseAddress + idx * sizeof(uint64_t), *(uint64_t*)data); // cast data to 64 bit and de-reference ( i.e. get 64 bit value)
+		data ++;
+		data ++;
    }
-
    return crc;
 }
 

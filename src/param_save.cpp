@@ -99,9 +99,11 @@ uint32_t parm_save()
 		uint64_t* pData = ((uint64_t*)&parmPage) + idx; // This appears to works 
 		flash_clear_status_flags();
 		flash_program_double_word(paramAddress + idx * sizeof(uint64_t), *pData);
+    }
    flash_lock();
    return parmPage.crc;
 }
+
 
 /**
 * Load parameters from flash
@@ -123,6 +125,7 @@ int parm_load()
       {
          Param::PARAM_NUM idx = Param::NumFromId(parmPage->data[idxPage].key);
          if (idx != Param::PARAM_INVALID && Param::GetType((Param::PARAM_NUM)idx) == Param::TYPE_PARAM)
+		 //if (idx != Param::PARAM_INVALID && parmPage->data[idxPage].key > 0)																	
          {
             Param::SetFixed(idx, parmPage->data[idxPage].value);
             Param::SetFlagsRaw(idx, parmPage->data[idxPage].flags);

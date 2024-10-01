@@ -118,7 +118,7 @@ void Terminal::Run()
    while (echo && lastIdx < currentIdx) //echo
       usart_send_blocking(usart, inBuf[lastIdx++]);
 
-   if (usart_get_flag(usart, USART_SR_ORE))
+   if (usart_get_flag(usart, USART_FLAG_ORE))
       usart_recv(usart); //Clear possible overrun
 
    if (currentIdx > 0)
@@ -251,7 +251,7 @@ void Terminal::SendBinary(const uint32_t* data, uint32_t len)
 
 bool Terminal::KeyPressed()
 {
-   return usart_get_flag(usart, USART_FLAG__RXNE);
+   return usart_get_flag(usart, USART_FLAG_RXNE);
 }
 
 void Terminal::FlushInput()
@@ -273,7 +273,7 @@ void Terminal::ResetDMA()
    dma_set_number_of_data(DMA1, hw->dmarx, bufSize);
    dmamux_reset_dma_channel(DMAMUX1,  hw->dmarx);
    dmamux_set_dma_channel_request(DMAMUX1, hw->dmarx, hw->dmamuxrx );											   
-   dma_enable_channel(hw->DMA1, hw->dmarx);
+   dma_enable_channel(DMA1, hw->dmarx);
 }
 
 void Terminal::EnableUart(char* arg)

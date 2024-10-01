@@ -25,7 +25,7 @@
 #include <libopencm3/stm32/fdcan.h>
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/rcc.h>
-#include <libopencm3/stm32/rtc.h>
+//#include <libopencm3/stm32/rtc.h>
 #include <libopencm3/cm3/common.h>
 #include <libopencm3/cm3/nvic.h>
 #include <libopencm3/cm3/systick.h>
@@ -74,34 +74,25 @@ Stm32Can::Stm32Can(uint32_t baseAddr, enum baudrates baudrate, bool remap)
       case CAN1:
          if (remap)
          {
-													 
 			gpio_mode_setup(GPIOB, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO8 | GPIO9);
-															
-									  
             gpio_set_af(GPIOB, GPIO_AF9, GPIO8 | GPIO9);
 		}
 		else
 		{
-													 
             gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO11 | GPIO12);
-													  
-									  
             gpio_set_af(GPIOA, GPIO_AF9, GPIO11 | GPIO12);
 		}
 
 		//CAN1 RX and TX IRQs
-	    nvic_enable_irq(NVIC_FDCAN1_INTR0_IRQ); // CAN RX ints FIFO0 and FIFO1
-																				
-													
-		nvic_set_priority(NVIC_FDCAN1_INTR0_IRQ, 0xf << 4); //lowest priority		
-        nvic_enable_irq(NVIC_FDCAN1_INTR1_IRQ); // CAN TX  ints
-	    nvic_set_priority(NVIC_FDCAN1_INTR1_IRQ, 0xf << 4); //lowest priority
+	    nvic_enable_irq(NVIC_FDCAN1_IT0_IRQ); // CAN RX ints FIFO0 and FIFO1	
+		nvic_set_priority(NVIC_FDCAN1_IT0_IRQ, 0xf << 4); //lowest priority		
+        nvic_enable_irq(NVIC_FDCAN1_IT1_IRQ); // CAN TX  ints
+	    nvic_set_priority(NVIC_FDCAN1_IT1_IRQ, 0xf << 4); //lowest priority
 		interfaces[0] = this;
 		break;
 		case CAN2:
 		if (remap)
 		{
-													 
 			gpio_mode_setup(GPIOB, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO12 | GPIO13);
 			gpio_set_af(GPIOB, GPIO_AF9, GPIO12 | GPIO13);
 		}
@@ -112,10 +103,10 @@ Stm32Can::Stm32Can(uint32_t baseAddr, enum baudrates baudrate, bool remap)
 			gpio_set_af(GPIOB, GPIO_AF9, GPIO12 | GPIO13);
 		}
 		//CAN2 RX and TX IRQs
-		nvic_enable_irq(NVIC_FDCAN2_INTR0_IRQ); // CAN RX
-		nvic_set_priority(NVIC_FDCAN2_INTR0_IRQ, 0xf << 4); //lowest priority
-		nvic_enable_irq(NVIC_FDCAN2_INTR1_IRQ); //CAN TX
-		nvic_set_priority(NVIC_FDCAN2_INTR1_IRQ, 0xf << 4); //lowest priority
+		nvic_enable_irq(NVIC_FDCAN2_IT0_IRQ); // CAN RX
+		nvic_set_priority(NVIC_FDCAN2_IT0_IRQ, 0xf << 4); //lowest priority
+		nvic_enable_irq(NVIC_FDCAN2_IT1_IRQ); //CAN TX
+		nvic_set_priority(NVIC_FDCAN2_IT1_IRQ, 0xf << 4); //lowest priority
 		interfaces[1] = this;
 		break;	 
 		case CAN3:
@@ -124,10 +115,10 @@ Stm32Can::Stm32Can(uint32_t baseAddr, enum baudrates baudrate, bool remap)
 		gpio_set_af(GPIOB, GPIO_AF11, GPIO3 | GPIO4);
 		
 		//CAN3 RX and TX IRQs
-		nvic_enable_irq(NVIC_FDCAN3_INTR0_IRQ); //CAN RX
-		nvic_set_priority(NVIC_FDCAN3_INTR0_IRQ, 0xf << 4); //lowest priority
-        nvic_enable_irq(NVIC_FDCAN3_INTR1_IRQ); //CAN TX
-		nvic_set_priority(NVIC_FDCAN3_INTR1_IRQ, 0xf << 4); //lowest priority
+		nvic_enable_irq(NVIC_FDCAN3_IT0_IRQ); //CAN RX
+		nvic_set_priority(NVIC_FDCAN3_IT0_IRQ, 0xf << 4); //lowest priority
+        nvic_enable_irq(NVIC_FDCAN3_IT1_IRQ); //CAN TX
+		nvic_set_priority(NVIC_FDCAN3_IT1_IRQ, 0xf << 4); //lowest priority
 		interfaces[2] = this;
 		break;
 	}
