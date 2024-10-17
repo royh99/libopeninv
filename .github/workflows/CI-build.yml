@@ -17,7 +17,7 @@ jobs:
       - name: Checkout libopencm3
         uses: actions/checkout@v4
         with:
-          repository: jsphuebner/libopencm3
+          repository: royh99/libopencm3
           path: libopencm3
 
       - name: Build unit tests on host

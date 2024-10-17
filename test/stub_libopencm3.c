@@ -56,3 +56,10 @@ uint32_t crc_calculate_block(uint32_t *datap, int size)
 void crc_reset(void)
 {
 }
+
+void flash_clear_status_flags()
+{
+}
+void flash_program_double_word(uint32_t address, uint64_t data)
+{
+}
