@@ -35,6 +35,7 @@ void DigIo::Configure(uint32_t port, uint16_t pin, PinMode::PinMode pinMode)
 
    _port = port;
    _pin = pin;
+   _invert = 0;
 
    switch (pinMode)
    {
@@ -42,10 +43,22 @@ void DigIo::Configure(uint32_t port, uint16_t pin, PinMode::PinMode pinMode)
       case PinMode::INPUT_PD:
          pull = GPIO_PUPD_PULLDOWN;
          break;
+      case PinMode::INPUT_PD_INV:
+         /* use defaults */
+         _invert = 1;
+         break;
       case PinMode::INPUT_PU:
          pull = GPIO_PUPD_PULLUP;
          break;
+      case PinMode::INPUT_PU_INV:
+         val = DIG_IO_ON;
+         _invert = 1;
+         break;
       case PinMode::INPUT_FLT:
+         break;
+      case PinMode::INPUT_FLT_INV:
+         cnf = GPIO_CNF_INPUT_FLOAT;
+         _invert = 1;
          break;
       case PinMode::INPUT_AIN:
          /* use defaults */
