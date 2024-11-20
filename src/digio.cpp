@@ -31,7 +31,8 @@ void DigIo::Configure(uint32_t port, uint16_t pin, PinMode::PinMode pinMode)
 {
    uint8_t mode = GPIO_MODE_INPUT;
    uint8_t pull = GPIO_PUPD_NONE;
-   uint16_t val = DIG_IO_OFF;
+   uint8_t otype = GPIO_OTYPE_PP;
+   uint8_t speed = GPIO_OSPEED_50MHZ; // 2, 25, 50, 100MHz
 
    _port = port;
    _pin = pin;
@@ -44,43 +45,42 @@ void DigIo::Configure(uint32_t port, uint16_t pin, PinMode::PinMode pinMode)
          pull = GPIO_PUPD_PULLDOWN;
          break;
       case PinMode::INPUT_PD_INV:
-         /* use defaults */
+         pull = GPIO_PUPD_PULLDOWN;
          _invert = 1;
          break;
       case PinMode::INPUT_PU:
          pull = GPIO_PUPD_PULLUP;
          break;
       case PinMode::INPUT_PU_INV:
-         val = DIG_IO_ON;
+         pull = GPIO_PUPD_PULLUP;
          _invert = 1;
          break;
       case PinMode::INPUT_FLT:
+	    //pull = GPIO_PUPD_NONE; // default
          break;
       case PinMode::INPUT_FLT_INV:
-         cnf = GPIO_CNF_INPUT_FLOAT;
+         //pull = GPIO_PUPD_NONE; // default
          _invert = 1;
          break;
       case PinMode::INPUT_AIN:
-         /* use defaults */
+         mode = GPIO_MODE_ANALOG;
          break;
       case PinMode::OUTPUT:
          mode = GPIO_MODE_OUTPUT;
+		 gpio_set_output_options(port, otype, speed, pin); // default otype PP	   
          break;
-/*       case PinMode::OUTPUT_OD:
-         mode = GPIO_MODE_OUTPUT_50_MHZ;
-         cnf = GPIO_CNF_OUTPUT_OPENDRAIN;
-         val = DIG_IO_ON;
+      case PinMode::OUTPUT_OD:
+         mode = GPIO_MODE_OUTPUT;
+         otype = GPIO_OTYPE_OD;
+		 gpio_set_output_options(port, otype, speed, pin);
+		 gpio_set(port, pin); 
          break;
-      case PinMode::OUTPUT_ALT:
-         mode = GPIO_MODE_OUTPUT_50_MHZ;
-         cnf = GPIO_CNF_OUTPUT_ALTFN_PUSHPULL;
+/*       case PinMode::OUTPUT_AF:
+	     mode = GPIO_MODE_AF
+         //gpio_set_af(port, af, pin);
          break; */
    }
 
-   if (DIG_IO_ON == val)
-   {
-      gpio_set(port, pin);
-   }
    gpio_mode_setup(port, mode, pull, pin);
 }
 

@@ -34,7 +34,7 @@ namespace PinMode {
        INPUT_AIN,
        OUTPUT,
        OUTPUT_OD,
-       OUTPUT_ALT,
+       //OUTPUT_AF,
        LAST
    };
 }
@@ -53,7 +53,6 @@ public:
     * @param[in] invert input or not to use
     */
    void Configure(uint32_t port, uint16_t pin, PinMode::PinMode pinMode);
-
 
    /**
    * Get pin value
