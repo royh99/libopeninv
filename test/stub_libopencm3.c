@@ -38,6 +38,10 @@ void flash_erase_page(uint32_t page_address)
 {
 }
 
+void flash_erase_sector(uint8_t sector, uint32_t program_size)
+{
+}
+
 uint16_t desig_get_flash_size(void)
 {
     return 8;
