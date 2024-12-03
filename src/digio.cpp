@@ -31,9 +31,11 @@ void DigIo::Configure(uint32_t port, uint16_t pin, PinMode::PinMode pinMode)
 {
    uint8_t mode = GPIO_MODE_INPUT;
    uint8_t pull = GPIO_PUPD_NONE;
-
+   uint8_t otype = GPIO_OTYPE_PP;
+   uint8_t speed = GPIO_OSPEED_50MHZ; // 2, 25, 50, 100MHz								 
    _port = port;
    _pin = pin;
+   _invert = 0;
 
    switch (pinMode)
    {
@@ -41,16 +43,40 @@ void DigIo::Configure(uint32_t port, uint16_t pin, PinMode::PinMode pinMode)
       case PinMode::INPUT_PD:
          pull = GPIO_PUPD_PULLDOWN;
          break;
+      case PinMode::INPUT_PD_INV:
+         pull = GPIO_PUPD_PULLDOWN;
+         _invert = 1;
+         break;
       case PinMode::INPUT_PU:
          pull = GPIO_PUPD_PULLUP;
          break;
+      case PinMode::INPUT_PU_INV:
+         pull = GPIO_PUPD_PULLUP;
+         _invert = 1;
+         break;
       case PinMode::INPUT_FLT:
-      case PinMode::INPUT_AIN:
          /* use defaults */
+         break;
+      case PinMode::INPUT_FLT_INV:
+         _invert = 1;
+         break;
+      case PinMode::INPUT_AIN:
+         mode = GPIO_MODE_ANALOG;
          break;
       case PinMode::OUTPUT:
          mode = GPIO_MODE_OUTPUT;
+		 gpio_set_output_options(port, otype, speed, pin); // default otype PP
+         break;			   
+     case PinMode::OUTPUT_OD:
+         mode = GPIO_MODE_OUTPUT;
+         otype = GPIO_OTYPE_OD;
+		 gpio_set_output_options(port, otype, speed, pin);
+		 gpio_set(port, pin);		 
          break;
+/*       case PinMode::OUTPUT_AF:
+	     mode = GPIO_MODE_AF
+         //gpio_set_af(port, af, pin);
+         break; */
    }
 
    gpio_mode_setup(port, mode, pull, pin);

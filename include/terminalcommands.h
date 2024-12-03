@@ -18,7 +18,7 @@
  */
 #ifndef TERMINALCOMMANDS_H
 #define TERMINALCOMMANDS_H
-
+#include "canmap.h"
 
 class TerminalCommands
 {
@@ -27,16 +27,24 @@ class TerminalCommands
       static void ParamGet(Terminal* term, char *arg);
       static void ParamFlag(Terminal* term, char *arg);
       static void ParamStream(Terminal* term, char *arg);
-      static void PrintParamsJson(Terminal* term, char *arg);
-      static void MapCan(Can* can, Terminal* term, char *arg);
+      static void ParamStreamBinary(Terminal* term, char *arg);
+      static void PrintParamsJson(IPutChar* term, char *arg);
+      static void PrintParamsJson(Terminal* term, char *arg) { PrintParamsJson((IPutChar*)term, arg); }
+      static void MapCan(Terminal* term, char *arg);
       static void SaveParameters(Terminal* term, char *arg);
       static void LoadParameters(Terminal* term, char *arg);
       static void Reset(Terminal* term, char *arg);
+      static void SetCanMap(CanMap* m) { canMap = m; }
+      static void EnableSaving() { saveEnabled = true; }
+      static void DisableSaving() { saveEnabled = false; }
 
    protected:
 
    private:
-      static void PrintCanMap(Param::PARAM_NUM param, int canid, int offset, int length, float gain, bool rx);
+      static void PrintCanMap(Param::PARAM_NUM param, uint32_t canid, uint8_t offsetBits, int8_t length, float gain, int8_t offset, bool rx);
+      static int ParamNamesToIndexes(char* names, Param::PARAM_NUM* indexes, uint32_t maxIndexes);
+      static CanMap* canMap;
+      static bool saveEnabled;
 };
 
 #endif // TERMINALCOMMANDS_H

@@ -34,12 +34,12 @@ class PiController
        */
       void SetGains(int kp, int ki)
       {
-         this->kp = kp;
-         this->ki = ki;
+         SetProportionalGain(kp);
+         SetIntegralGain(ki);
       }
 
       void SetProportionalGain(int kp) { this->kp = kp; }
-      void SetIntegralGain(int ki) { this->ki = ki; }
+      void SetIntegralGain(int ki);
 
       /** Set regulator target set point
        * \param val regulator target
@@ -48,22 +48,22 @@ class PiController
 
       s32fp GetRef() { return refVal; }
 
-      /** Set maximum regulator output
+      /** Set maximum controller output
         * \param val actuator saturation value
-        * \post the integrator will stop once this value is surpassed. The output is NOT limited!
         */
-      void SetMinMaxY(int32_t valMin, int32_t valMax) { minY = valMin; maxY = valMax; }
+      void SetMinMaxY(int32_t valMin, int32_t valMax)
+      { minY = valMin; maxY = valMax; SetIntegralGain(ki); }
 
       /** Set calling frequency
        * \param val New value to set
        */
-      void SetCallingFrequency(int val) { frequency = val; }
+      void SetCallingFrequency(int val) { frequency = val; SetIntegralGain(ki); }
 
       /** Run controller to obtain a new actuator value
        * \param curVal currently measured value
        * \return new actuator value
        */
-      int32_t Run(s32fp curVal);
+      int32_t Run(s32fp curVal, int32_t feedForward = 0);
 
       /** Run controller to obtain a new actuator value, run only proportional part
        * \param curVal currently measured value
@@ -77,18 +77,23 @@ class PiController
       /** Preload Integrator to yield a certain output
        * @pre SetCallingFrequency() and SetGains() must be called first
       */
-      void PreloadIntegrator(int32_t yieldedOutput) { esum = (yieldedOutput * frequency) / (ki + 1); }
+      void PreloadIntegrator(int32_t yieldedOutput) { esum = ki != 0 ? FP_FROMINT((yieldedOutput * frequency) / ki) : 0; }
+
+      /** Debug function for getting integrator */
+      s32fp GetIntegrator() { return esum; }
 
    protected:
 
    private:
-      int32_t kp; //!< Member variable "kp"
-      int32_t ki; //!< Member variable "ki"
-      s32fp esum; //!< Member variable "esum"
-      s32fp refVal;
+      int32_t kp; //!< Proportional controller gain
+      int32_t ki; //!< Integral controller gain
+      s32fp esum; //!< Integrator
+      s32fp refVal; //!< control target
       int32_t frequency; //!< Calling frequency
-      int32_t maxY;
-      int32_t minY;
+      int32_t maxY; //!< upper actuator saturation value
+      int32_t minY; //!< lower actuator saturation value
+      int32_t minSum; //!< upper integrator boundary
+      int32_t maxSum; //!< lower integrator boundary
 };
 
 #endif // PIREGULATOR_H

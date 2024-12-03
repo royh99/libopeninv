@@ -19,82 +19,23 @@
  */
 #ifndef STM32_CAN_H_INCLUDED
 #define STM32_CAN_H_INCLUDED
-#include "params.h"
-
-#define CAN_ERR_INVALID_ID -1
-#define CAN_ERR_INVALID_OFS -2
-#define CAN_ERR_INVALID_LEN -3
-#define CAN_ERR_MAXMESSAGES -4
-#define CAN_ERR_MAXITEMS -5
-
-class CANIDMAP;
-class SENDBUFFER;
-
-#ifndef MAX_ITEMS_PER_MESSAGE
-#define MAX_ITEMS_PER_MESSAGE 10
-#endif // MAX_ITEMS_PER_MESSAGE
-
-#ifndef MAX_MESSAGES
-#define MAX_MESSAGES 10
-#endif // MAX_MESSAGES
+#include "canhardware.h"
 
 #ifndef SENDBUFFER_LEN
 #define SENDBUFFER_LEN 20
 #endif // SENDBUFFER_LEN
 
-#ifndef MAX_USER_MESSAGES
-#define MAX_USER_MESSAGES 10
-#endif // MAX_USER_MESSAGES
-
-class Can
+class Stm32Can: public CanHardware
 {
 public:
-   enum baudrates
-   {
-      Baud125, Baud250, Baud500, Baud1000, BaudLast
-   };
-
-   Can(uint32_t baseAddr, enum baudrates baudrate, bool remap=false);
-   void Clear(void);
+   Stm32Can(uint32_t baseAddr, enum baudrates baudrate, bool remap = false);
    void SetBaudrate(enum baudrates baudrate);
-   void Send(uint32_t canId, uint32_t data[2]) { Send(canId, data, 8); }
    void Send(uint32_t canId, uint32_t data[2], uint8_t len);
-   void SendAll();
-   void SDOWrite(uint8_t remoteNodeId, uint16_t index, uint8_t subIndex, uint32_t data);
-   void Save();
-   void SetReceiveCallback(void (*recv)(uint32_t, uint32_t*));
-   bool RegisterUserMessage(int canId);
-   uint32_t GetLastRxTimestamp();
-   int AddSend(Param::PARAM_NUM param, int canId, int offsetBits, int length, float gain);
-   int AddRecv(Param::PARAM_NUM param, int canId, int offsetBits, int length, float gain);
-   int AddSend(Param::PARAM_NUM param, int canId, int offsetBits, int length, float gain, int16_t offset);
-   int AddRecv(Param::PARAM_NUM param, int canId, int offsetBits, int length, float gain, int16_t offset);
-   int Remove(Param::PARAM_NUM param);
-   bool FindMap(Param::PARAM_NUM param, int& canId, int& offset, int& length, float& gain, bool& rx);
-   void IterateCanMap(void (*callback)(Param::PARAM_NUM, int, int, int, float, bool));
-   void HandleRx(int fifo);
    void HandleTx();
-   void SetNodeId(uint8_t id) { nodeId = id; }
-   static Can* GetInterface(int index);
+   void HandleMessage(int fifo);
+   static Stm32Can* GetInterface(int index);
 
 private:
-   static volatile bool isSaving;
-
-   struct CANPOS
-   {
-      uint16_t mapParam;
-      int16_t offset;
-      float gain;
-      uint8_t offsetBits;
-      int8_t numBits;
-   };
-
-   struct CANIDMAP
-   {
-      uint32_t canId;
-      CANPOS items[MAX_ITEMS_PER_MESSAGE];
-   };
-
    struct SENDBUFFER
    {
       uint32_t id;
@@ -102,32 +43,17 @@ private:
       uint32_t data[2];
    };
 
-   CANIDMAP canSendMap[MAX_MESSAGES];
-   CANIDMAP canRecvMap[MAX_MESSAGES];
-   uint32_t lastRxTimestamp;
    SENDBUFFER sendBuffer[SENDBUFFER_LEN];
    int sendCnt;
-   void (*recvCallback)(uint32_t, uint32_t*);
-   uint16_t userIds[MAX_USER_MESSAGES];
-   int nextUserMessageIndex;
    uint32_t canDev;
-   uint8_t nodeId;
 
-   void ProcessSDO(uint32_t data[2]);
-   void ClearMap(CANIDMAP *canMap);
-   int RemoveFromMap(CANIDMAP *canMap, Param::PARAM_NUM param);
-   int Add(CANIDMAP *canMap, Param::PARAM_NUM param, int canId, int offsetBits, int length, float gain, int16_t offset);
-   uint32_t SaveToFlash(uint32_t baseAddress, uint32_t* data, int len);
-   int LoadFromFlash();
-   CANIDMAP *FindById(CANIDMAP *canMap, uint32_t canId);
-   int CopyIdMapExcept(CANIDMAP *source, CANIDMAP *dest, Param::PARAM_NUM param);
-   void ReplaceParamEnumByUid(CANIDMAP *canMap);
-   void ReplaceParamUidByEnum(CANIDMAP *canMap);
    void ConfigureFilters();
    void SetFilterBank(int& idIndex, int& filterId, uint16_t* idList);
+   void SetFilterBankMask(int& idIndex, int& filterId, uint16_t* idMaskList);
+   void SetFilterBank29(int& idIndex, int& filterId, uint32_t* idList);
    uint32_t GetFlashAddress();
 
-   static Can* interfaces[];
+   static Stm32Can* interfaces[];
 };
 
 

@@ -26,11 +26,15 @@ namespace PinMode {
    enum PinMode
    {
        INPUT_PD,
+       INPUT_PD_INV, //Logic Inverted
        INPUT_PU,
+       INPUT_PU_INV, //Logic Inverted
        INPUT_FLT,
+       INPUT_FLT_INV, //Logic Inverted
        INPUT_AIN,
        OUTPUT,
        OUTPUT_OD,
+       OUTPUT_ALT,
        LAST
    };
 }
@@ -46,8 +50,10 @@ public:
     * @param[in] port port to use for this pin
     * @param[in] pin port-pin to use for this pin
     * @param[in] mode pinmode to use
+    * @param[in] invert input or not to use
     */
    void Configure(uint32_t port, uint16_t pin, PinMode::PinMode pinMode);
+
 
    /**
    * Get pin value
@@ -55,7 +61,7 @@ public:
    * @param[in] io pin index
    * @return pin value
    */
-   bool Get() { return gpio_get(_port, _pin) > 0; }
+   bool Get() { return (gpio_get(_port, _pin) > 0) ^ _invert; }
 
    /**
    * Set pin high
@@ -81,6 +87,7 @@ public:
 private:
    uint32_t _port;
    uint16_t _pin;
+   bool _invert;
 };
 //Configure all digio objects from the given list
 #define DIG_IO_ENTRY(name, port, pin, mode) DigIo::name.Configure(port, pin, mode);

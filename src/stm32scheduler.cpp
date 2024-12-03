@@ -20,7 +20,7 @@
 #include <libopencm3/stm32/rcc.h>
 
 /* return CCRc of TIMt */
-#define TIM_CCR(t,c) (*(volatile uint32_t *)(&TIM_CCR1(t) + (c)))
+#define TIM_CCR(t,c) (*(uint32_t *)(&TIM_CCR1(t) + (c)))
 
 const enum tim_oc_id Stm32Scheduler::ocMap[MAX_TASKS] = { TIM_OC1, TIM_OC2, TIM_OC3, TIM_OC4 };
 
@@ -31,7 +31,7 @@ Stm32Scheduler::Stm32Scheduler(uint32_t timer)
    timer_enable_preload(timer);
    timer_direction_up(timer);
    /* Set prescaler to count at 100 kHz */
-   timer_set_prescaler(timer, (rcc_apb2_frequency / 100000) - 1);
+   timer_set_prescaler(timer, rcc_apb2_frequency / 100000 - 1);
    /* Maximum counter value */
    timer_set_period(timer, 0xFFFF);
 
@@ -45,12 +45,11 @@ void Stm32Scheduler::AddTask(void (*function)(void), uint16_t period)
    timer_disable_counter(timer);
 
    timer_set_oc_mode(timer, ocMap[nextTask], TIM_OCM_ACTIVE);
+   timer_set_oc_value(timer, ocMap[nextTask], 0);
 
    /* Assign task function and period */
    functions[nextTask] = function;
    periods  [nextTask] = period * 100;
-
-   timer_set_oc_value(timer, ocMap[nextTask], periods[nextTask]);
 
    /* Enable interrupt for that channel */
    timer_enable_irq(timer, TIM_DIER_CC1IE << nextTask);
@@ -66,18 +65,23 @@ void Stm32Scheduler::AddTask(void (*function)(void), uint16_t period)
 
 void Stm32Scheduler::Run()
 {
-   for (int i = 0; i < nextTask; i++)
+   for (int i = 0; i < MAX_TASKS; i++)
    {
-      if (timer_get_flag(timer, TIM_SR_CC1IF << i))
+      if (i < nextTask && timer_get_flag(timer, TIM_SR_CC1IF << i))
       {
          uint16_t start = timer_get_counter(timer);
 
          TIM_CCR(timer, i) += periods[i];
          functions[i]();
          execTicks[i] = timer_get_counter(timer) - start;
+         timer_clear_flag(timer, TIM_SR_CC1IF << i);
+      }
+      else if (i >= nextTask)
+      {
+         //Also clear flags of unused channels, they seem to fire the interrupt as well...
+         timer_clear_flag(timer, TIM_SR_CC1IF << i);
       }
    }
-   timer_clear_flag(timer, TIM_SR_CC1IF | TIM_SR_CC2IF | TIM_SR_CC3IF | TIM_SR_CC4IF);
 }
 
 int Stm32Scheduler::GetCpuLoad()
@@ -85,7 +89,7 @@ int Stm32Scheduler::GetCpuLoad()
    int totalLoad = 0;
    for (int i = 0; i < nextTask; i++)
    {
-      int load = (10 * execTicks[i]) / periods[i];
+      int load = (1000 * execTicks[i]) / periods[i];
       totalLoad += load;
    }
    return totalLoad;
