@@ -33,16 +33,10 @@
 
 const Terminal::HwInfo Terminal::hwInfo[] =
 {
-<<<<<<< HEAD
    { USART1, DMA2, DMA_STREAM5, DMA_STREAM2, DMA_SxCR_CHSEL_4, GPIOA, GPIO9, GPIOB, GPIO6 },
    { USART2, DMA1, DMA_STREAM6, DMA_STREAM5, DMA_SxCR_CHSEL_4, GPIOA, GPIO2 | GPIO3, GPIOD, GPIO5 | GPIO6 },
    { USART3, DMA1, DMA_STREAM3, DMA_STREAM1, DMA_SxCR_CHSEL_4, GPIOB, GPIO10 | GPIO11, GPIOC, GPIO10 | GPIO11 },
-=======
-   { USART1, DMA1, DMA_CHANNEL4, DMA_CHANNEL5, GPIOA, GPIO_USART1_TX, GPIOB, GPIO_USART1_RE_TX },
-   { USART2, DMA1, DMA_CHANNEL7, DMA_CHANNEL6, GPIOA, GPIO_USART2_TX, GPIOD, GPIO_USART2_RE_TX },
-   { USART3, DMA1, DMA_CHANNEL2, DMA_CHANNEL3, GPIOB, GPIO_USART3_TX, GPIOC, GPIO_USART3_PR_TX },
-   { UART4,  DMA2, DMA_CHANNEL5, DMA_CHANNEL3, GPIOC, GPIO_UART4_TX,  GPIOC, GPIO_UART4_TX },
->>>>>>> origin
+   //{ UART4,  DMA2, DMA_CHANNEL5, DMA_CHANNEL3, GPIOC, GPIO_UART4_TX,  GPIOC, GPIO_UART4_TX },
 };
 
 Terminal* Terminal::defaultTerminal;
@@ -85,7 +79,6 @@ Terminal::Terminal(uint32_t usart, const TERM_CMD* commands, bool remap, bool ec
    usart_enable_rx_dma(usart);
    usart_enable_tx_dma(usart);
 
-<<<<<<< HEAD
    dma_stream_reset(hw->dmaController, hw->streamtx);
    dma_set_transfer_mode(hw->dmaController, hw->streamtx, DMA_SxCR_DIR_MEM_TO_PERIPHERAL);
    dma_set_peripheral_address(hw->dmaController, hw->streamtx, (uint32_t)&USART_DR(usart));
@@ -104,23 +97,6 @@ Terminal::Terminal(uint32_t usart, const TERM_CMD* commands, bool remap, bool ec
    dma_set_memory_address(hw->dmaController, hw->streamrx, (uint32_t)inBuf);
    dma_set_number_of_data(hw->dmaController, hw->streamrx, bufSize);
    dma_enable_stream(hw->dmaController, hw->streamrx);
-=======
-   dma_channel_reset(hw->dmactl, hw->dmatx);
-   dma_set_read_from_memory(hw->dmactl, hw->dmatx);
-   dma_set_peripheral_address(hw->dmactl, hw->dmatx, (uint32_t)&USART_DR(usart));
-   dma_set_peripheral_size(hw->dmactl, hw->dmatx, DMA_CCR_PSIZE_8BIT);
-   dma_set_memory_size(hw->dmactl, hw->dmatx, DMA_CCR_MSIZE_8BIT);
-   dma_enable_memory_increment_mode(hw->dmactl, hw->dmatx);
-
-   dma_channel_reset(hw->dmactl, hw->dmarx);
-   dma_set_peripheral_address(hw->dmactl, hw->dmarx, (uint32_t)&USART_DR(usart));
-   dma_set_peripheral_size(hw->dmactl, hw->dmarx, DMA_CCR_PSIZE_8BIT);
-   dma_set_memory_size(hw->dmactl, hw->dmarx, DMA_CCR_MSIZE_8BIT);
-   dma_enable_memory_increment_mode(hw->dmactl, hw->dmarx);
-   dma_enable_channel(hw->dmactl, hw->dmarx);
-
-   ResetDMA();
->>>>>>> origin
 
    usart_enable(usart);
 }
@@ -128,13 +104,8 @@ Terminal::Terminal(uint32_t usart, const TERM_CMD* commands, bool remap, bool ec
 /** Run the terminal */
 void Terminal::Run()
 {
-<<<<<<< HEAD
-   int numRcvd = dma_get_number_of_data(hw->dmaController, hw->streamrx);
-   int currentIdx = bufSize - numRcvd;
-=======
-   int unusedBytes = dma_get_number_of_data(hw->dmactl, hw->dmarx);
+   int unusedBytes = dma_get_number_of_data(hw->dmaController, hw->streamrx);
    int currentIdx = bufSize - unusedBytes;
->>>>>>> origin
 
    if (0 == unusedBytes)
       ResetDMA();
@@ -142,7 +113,7 @@ void Terminal::Run()
    while (echo && lastIdx < currentIdx) //echo
       usart_send_blocking(usart, inBuf[lastIdx++]);
 
-   if (usart_get_flag(usart, USART_SR_ORE))
+   if (usart_get_flag(usart, USART_FLAG_ORE))
       usart_recv(usart); //Clear possible overrun
 
    if (currentIdx > 0)
@@ -150,7 +121,7 @@ void Terminal::Run()
       if (inBuf[currentIdx - 1] == '\n' || inBuf[currentIdx - 1] == '\r')
       {
          //Do not accept a new command while processing the current one
-         dma_disable_channel(hw->dmactl, hw->dmarx);
+         dma_disable_stream(hw->dmaController, hw->streamrx);
          if (currentIdx > 1) //handle just \n quicker
          {
             inBuf[currentIdx] = 0;
@@ -247,8 +218,6 @@ void Terminal::PutChar(char c)
    else if (c == '\n' || curIdx == (bufSize - 1))
    {
       outBuf[curBuf][curIdx] = c;
-<<<<<<< HEAD
-
       while (!dma_get_interrupt_flag(hw->dmaController, hw->streamtx, DMA_TCIF) && !firstSend);
 
       dma_disable_stream(hw->dmaController, hw->streamtx);
@@ -259,9 +228,7 @@ void Terminal::PutChar(char c)
 
       curBuf = !curBuf; //switch buffers
       firstSend = false; //only needed once so we don't get stuck in the while loop above
-=======
       SendCurrentBuffer(curIdx + 1);
->>>>>>> origin
       curIdx = 0;
    }
    else
@@ -289,7 +256,7 @@ void Terminal::SendBinary(const uint32_t* data, uint32_t len)
 
 bool Terminal::KeyPressed()
 {
-   return usart_get_flag(usart, USART_SR_RXNE);
+   return usart_get_flag(usart, USART_FLAG_RXNE);
 }
 
 void Terminal::FlushInput()
@@ -300,27 +267,16 @@ void Terminal::FlushInput()
 void Terminal::DisableTxDMA()
 {
    txDmaEnabled = false;
-<<<<<<< HEAD
    dma_disable_stream(hw->dmaController, hw->streamtx);
-=======
-   dma_disable_channel(hw->dmactl, hw->dmatx);
->>>>>>> origin
    usart_disable_tx_dma(usart);
 }
 
 void Terminal::ResetDMA()
 {
-<<<<<<< HEAD
    dma_disable_stream(hw->dmaController, hw->streamrx);
    dma_set_number_of_data(hw->dmaController, hw->streamrx, bufSize);
    dma_clear_interrupt_flags(hw->dmaController, hw->streamrx, DMA_TCIF);
    dma_enable_stream(hw->dmaController, hw->streamrx);
-=======
-   dma_disable_channel(hw->dmactl, hw->dmarx);
-   dma_set_memory_address(hw->dmactl, hw->dmarx, (uint32_t)inBuf);
-   dma_set_number_of_data(hw->dmactl, hw->dmarx, bufSize);
-   dma_enable_channel(hw->dmactl, hw->dmarx);
->>>>>>> origin
 }
 
 void Terminal::EnableUart(char* arg)
@@ -400,13 +356,13 @@ void Terminal::Send(const char *str)
 
 void Terminal::SendCurrentBuffer(uint32_t len)
 {
-   while (!dma_get_interrupt_flag(hw->dmactl, hw->dmatx, DMA_TCIF) && !firstSend);
+   while (!dma_get_interrupt_flag(hw->dmaController, hw->streamtx, DMA_TCIF) && !firstSend);
 
-   dma_disable_channel(hw->dmactl, hw->dmatx);
-   dma_set_number_of_data(hw->dmactl, hw->dmatx, len);
-   dma_set_memory_address(hw->dmactl, hw->dmatx, (uint32_t)outBuf[curBuf]);
-   dma_clear_interrupt_flags(hw->dmactl, hw->dmatx, DMA_TCIF);
-   dma_enable_channel(hw->dmactl, hw->dmatx);
+   dma_disable_stream(hw->dmaController, hw->streamtx);
+   dma_set_number_of_data(hw->dmaController, hw->streamtx, len);
+   dma_set_memory_address(hw->dmaController, hw->streamtx, (uint32_t)outBuf[curBuf]);
+   dma_clear_interrupt_flags(hw->dmaController, hw->streamtx, DMA_TCIF);
+   dma_enable_stream(hw->dmaController, hw->streamtx);
 
    curBuf = !curBuf; //switch buffers
    firstSend = false; //only needed once so we don't get stuck in the while loop above

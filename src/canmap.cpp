@@ -412,11 +412,11 @@ void CanMap::Save()
 
    crc_reset();
 
-   flash_unlock();
-   flash_set_ws(2);
+   flash_unlock();    
+   flash_set_ws(3); 
 
    if (check != 0xFFFFFFFF) //Only erase when needed
-      flash_erase_page(baseAddress);
+      flash_erase_sector(1, 2);
 
    ReplaceParamEnumByUid(canSendMap);
    ReplaceParamEnumByUid(canRecvMap);

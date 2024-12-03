@@ -17,11 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <libopencm3/cm3/scb.h>
-<<<<<<< HEAD
 #include <libopencm3/stm32/flash.h>
-=======
 #include <libopencm3/stm32/desig.h>
->>>>>>> origin
 #include "hwdefs.h"
 #include "terminal.h"
 #include "params.h"
@@ -85,6 +82,7 @@ void TerminalCommands::ParamSet(Terminal* term, char* arg)
 void TerminalCommands::ParamGet(Terminal* term, char* arg)
 {
    Param::PARAM_NUM idx;
+   s32fp val;
    char* comma;
    char orig;
 
@@ -100,7 +98,7 @@ void TerminalCommands::ParamGet(Terminal* term, char* arg)
 
       if (Param::PARAM_INVALID != idx)
       {
-         s32fp val = Param::Get(idx);
+         val = Param::Get(idx);
          fprintf(term, "%f\r\n", val);
       }
       else
@@ -269,18 +267,8 @@ void TerminalCommands::PrintParamsJson(IPutChar* term, char *arg)
 
          if (canMap->FindMap((Param::PARAM_NUM)idx, canId, canStart, canLength, canGain, offset, isRx))
          {
-<<<<<<< HEAD
-            fprintf(term, "\"canif\":1,\"canid\":%d,\"canoffset\":%d,\"canlength\":%d,\"cangain\":%f,\"isrx\":%s,",
-                   canId, canOffset, canLength, FP_FROMFLT(canGain), isRx ? "true" : "false");
-         }
-         else if (Can::GetInterface(1)->FindMap((Param::PARAM_NUM)idx, canId, canOffset, canLength, canGain, isRx))
-         {
-            fprintf(term, "\"canif\":2,\"canid\":%d,\"canoffset\":%d,\"canlength\":%d,\"cangain\":%f,\"isrx\":%s,",
-                   canId, canOffset, canLength, FP_FROMFLT(canGain), isRx ? "true" : "false");
-=======
             fprintf(term, "\"canid\":%d,\"canoffset\":%d,\"canlength\":%d,\"cangain\":%f,\"canadd\":%d,\"isrx\":%s,",
                    canId, canStart, canLength, FP_FROMFLT(canGain), offset, isRx ? "true" : "false");
->>>>>>> origin
          }
 
          if (Param::GetType((Param::PARAM_NUM)idx) == Param::TYPE_PARAM || Param::GetType((Param::PARAM_NUM)idx) == Param::TYPE_TESTPARAM)
@@ -300,12 +288,11 @@ void TerminalCommands::PrintParamsJson(IPutChar* term, char *arg)
 }
 
 //cantx param id offset len gain
-void TerminalCommands::MapCan(Can* can, Terminal* term, char *arg)
+void TerminalCommands::MapCan(Terminal* term, char *arg)
 {
    Param::PARAM_NUM paramIdx = Param::PARAM_INVALID;
    int values[5] = { 0 };
    int result;
-   float gain;
    char op;
    char *ending;
    const int numArgs = sizeof(values) / sizeof(int);
@@ -317,22 +304,14 @@ void TerminalCommands::MapCan(Can* can, Terminal* term, char *arg)
    {
       while (curTerm != NULL); //lock
       curTerm = term;
-<<<<<<< HEAD
-      can->IterateCanMap(PrintCanMap);
-=======
       canMap->IterateCanMap(PrintCanMap);
->>>>>>> origin
       curTerm = NULL;
       return;
    }
 
    if (arg[0] == 'c')
    {
-<<<<<<< HEAD
-      can->Clear();
-=======
       canMap->Clear();
->>>>>>> origin
       fprintf(term, "All message definitions cleared\r\n");
       return;
    }
@@ -368,11 +347,7 @@ void TerminalCommands::MapCan(Can* can, Terminal* term, char *arg)
 
    if (op == 'd')
    {
-<<<<<<< HEAD
-      result = can->Remove(paramIdx);
-=======
       result = canMap->Remove(paramIdx);
->>>>>>> origin
       fprintf(term, "%d entries removed\r\n", result);
       return;
    }
@@ -390,18 +365,10 @@ void TerminalCommands::MapCan(Can* can, Terminal* term, char *arg)
       *ending = 0;
       int iVal = my_atoi(arg);
 
-<<<<<<< HEAD
-      //interpret gain as float
-      if (i == (numArgs - 1))
-      {
-         gain = (float)fp_atoi(arg, 16);
-         gain /= 65536;
-=======
       //special processing for gain
       if (i == (numArgs - 2))
       {
          gain = (float)fp_atoi(arg, 16) / 65536.0f;
->>>>>>> origin
       }
       else
       {
@@ -413,19 +380,11 @@ void TerminalCommands::MapCan(Can* can, Terminal* term, char *arg)
 
    if (op == 't')
    {
-<<<<<<< HEAD
-      result = can->AddSend(paramIdx, values[0], values[1], values[2], gain);
-   }
-   else
-   {
-      result = can->AddRecv(paramIdx, values[0], values[1], values[2], gain);
-=======
       result = canMap->AddSend(paramIdx, values[0], values[1], values[2], gain, values[4]);
    }
    else
    {
       result = canMap->AddRecv(paramIdx, values[0], values[1], values[2], gain, values[4]);
->>>>>>> origin
    }
 
    switch (result)
@@ -453,21 +412,11 @@ void TerminalCommands::MapCan(Can* can, Terminal* term, char *arg)
 void TerminalCommands::SaveParameters(Terminal* term, char *arg)
 {
    arg = arg;
-<<<<<<< HEAD
-   //We use the second 16k sector for saving configuration data
-   flash_unlock();
-   flash_erase_sector(1, 2);
-   Can::GetInterface(0)->Save();
-   Can::GetInterface(1)->Save();
-   fprintf(term, "CANMAP stored\r\n");
-   uint32_t crc = parm_save();
-   fprintf(term, "Parameters stored, CRC=%x\r\n", crc);
-   flash_lock();
-=======
 
    if (saveEnabled)
    {
       cm_disable_interrupts();
+	  //We use the second 16k sector for saving configuration data
       canMap->Save();
       fprintf(term, "CANMAP stored\r\n");
       uint32_t crc = parm_save();
@@ -478,7 +427,6 @@ void TerminalCommands::SaveParameters(Terminal* term, char *arg)
    {
       fprintf(term, "Will not write to flash in run modes, please stop before saving!\r\n");
    }
->>>>>>> origin
 }
 
 void TerminalCommands::LoadParameters(Terminal* term, char *arg)
@@ -507,11 +455,7 @@ void TerminalCommands::Reset(Terminal* term, char *arg)
    scb_reset_system();
 }
 
-<<<<<<< HEAD
-void TerminalCommands::PrintCanMap(Param::PARAM_NUM param, int canid, int offset, int length, float gain, bool rx)
-=======
 void TerminalCommands::PrintCanMap(Param::PARAM_NUM param, uint32_t canid, uint8_t offsetBits, int8_t length, float gain, int8_t offset, bool rx)
->>>>>>> origin
 {
    const char* name = Param::GetAttrib(param)->name;
    fprintf(curTerm, "can ");
@@ -520,9 +464,6 @@ void TerminalCommands::PrintCanMap(Param::PARAM_NUM param, uint32_t canid, uint8
       fprintf(curTerm, "rx ");
    else
       fprintf(curTerm, "tx ");
-<<<<<<< HEAD
-   fprintf(curTerm, "%s %d %d %d %f\r\n", name, canid, offset, length, FP_FROMFLT(gain));
-=======
    fprintf(curTerm, "%s %d %d %d %f %d\r\n", name, canid, offsetBits, length, FP_FROMFLT(gain), offset);
 }
 
@@ -555,5 +496,4 @@ int TerminalCommands::ParamNamesToIndexes(char* names, Param::PARAM_NUM* indexes
    } while (',' == *comma && curIndex < maxIndex);
 
    return curIndex;
->>>>>>> origin
 }

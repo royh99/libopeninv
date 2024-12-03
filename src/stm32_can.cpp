@@ -47,11 +47,13 @@ struct CANSPEED
 Stm32Can* Stm32Can::interfaces[MAX_INTERFACES];
 
 static const CANSPEED canSpeed[CanHardware::BaudLast] =
+{
    { CAN_BTR_TS1_13TQ, CAN_BTR_TS2_2TQ, 21 }, //125kbps
    { CAN_BTR_TS1_11TQ, CAN_BTR_TS2_2TQ, 12 }, //250kbps
    { CAN_BTR_TS1_11TQ, CAN_BTR_TS2_2TQ, 6 }, //500kbps
    { CAN_BTR_TS1_10TQ, CAN_BTR_TS2_2TQ, 4 }, //800kbps
    { CAN_BTR_TS1_11TQ, CAN_BTR_TS2_2TQ, 3 }, //1000kbps
+};
 
 /** \brief Init can hardware with given baud rate
  * Initializes the following sub systems:
