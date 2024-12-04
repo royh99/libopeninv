@@ -25,11 +25,11 @@
 #include "my_math.h"
 
 #if ADC_COUNT == 1
-   #define TRANSFER_PSIZE DMA_CCR_PSIZE_16BIT
-   #define TRANSFER_MSIZE DMA_CCR_MSIZE_16BIT
+   #define TRANSFER_PSIZE DMA_SxCR_PSIZE_16BIT
+   #define TRANSFER_MSIZE DMA_SxCR_MSIZE_16BIT
 #elif ADC_COUNT == 2
-   #define TRANSFER_PSIZE DMA_CCR_PSIZE_32BIT
-   #define TRANSFER_MSIZE DMA_CCR_MSIZE_32BIT
+   #define TRANSFER_PSIZE DMA_SxCR_PSIZE_32BIT
+   #define TRANSFER_MSIZE DMA_SxCR_MSIZE_32BIT
    #undef ANA_IN_ENTRY
    #define ANA_IN_ENTRY(name, port, pin) +1
    #if ((ANA_IN_LIST) & 1) == 1
@@ -41,7 +41,6 @@
 #endif // ADC_COUNT
 
 #define ADC_DMA_STREAM 0
-//#define ADC_DMA_CHAN 1
 #define MEDIAN3_FROM_ADC_ARRAY(a) median3(*a, *(a + ANA_IN_COUNT), *(a + 2*ANA_IN_COUNT))
 
 uint8_t AnaIn::channel_array[ADC_COUNT][ANA_IN_COUNT / ADC_COUNT];
@@ -67,20 +66,21 @@ void AnaIn::Start()
       adc_set_right_aligned(adc[i]);
       adc_set_sample_time_on_all_channels(adc[i], SAMPLE_TIME);
       adc_power_on(adc[i]);
-	  adc_set_dma_continue(ADC1);
+	  adc_set_dma_continue(adc[i]);
       //adc_reset_calibration(adc[i]);
       //adc_calibrate(adc[i]);
       adc_set_regular_sequence(adc[i], ANA_IN_COUNT / ADC_COUNT, channel_array[i]);
       adc_enable_dma(adc[i]);
-      //adc_enable_external_trigger_regular(adc[i], ADC_CR2_EXTSEL_SWSTART);
+	  //adc_enable_external_trigger_regular(adc[i], ADC_CR2_EXTSEL_SWSTART);
+      adc_enable_external_trigger_regular(adc[i], ADC_CR2_SWSTART, ADC_CR2_EXTEN_DISABLED);
    }
 
    dma_set_transfer_mode(DMA2, ADC_DMA_STREAM, DMA_SxCR_DIR_PERIPHERAL_TO_MEM);
    dma_set_peripheral_address(DMA2, ADC_DMA_STREAM, (uint32_t)&ADC_DR(ADC1));
    dma_set_memory_address(DMA2, ADC_DMA_STREAM, (uint32_t)values);
-   dma_set_peripheral_size(DMA2, ADC_DMA_STREAM, DMA_SxCR_PSIZE_16BIT);
-   dma_set_memory_size(DMA2, ADC_DMA_STREAM, DMA_SxCR_MSIZE_16BIT);
-   dma_set_number_of_data(DMA2, ADC_DMA_STREAM, NUM_SAMPLES * ANA_IN_COUNT);
+   dma_set_peripheral_size(DMA2, ADC_DMA_STREAM, TRANSFER_PSIZE);
+   dma_set_memory_size(DMA2, ADC_DMA_STREAM, TRANSFER_MSIZE);
+   dma_set_number_of_data(DMA2, ADC_DMA_STREAM, NUM_SAMPLES * ANA_IN_COUNT / ADC_COUNT);
    dma_enable_memory_increment_mode(DMA2, ADC_DMA_STREAM);
    dma_enable_circular_mode(DMA2, ADC_DMA_STREAM);
    dma_channel_select(DMA2, ADC_DMA_STREAM, DMA_SxCR_CHSEL_0);
