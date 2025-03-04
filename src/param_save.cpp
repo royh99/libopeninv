@@ -27,6 +27,7 @@
 
 #define NUM_PARAMS ((PARAM_BLKSIZE - 8) / sizeof(PARAM_ENTRY))
 #define PARAM_WORDS (PARAM_BLKSIZE / 4)
+#define PARAM_DOUBLEWORDS (PARAM_WORDS / 2)                                       
 
 typedef struct
 {
@@ -39,16 +40,12 @@ typedef struct
 typedef struct
 {
    PARAM_ENTRY data[NUM_PARAMS];
-   uint32_t crc;
-   uint32_t padding;
+   uint64_t crc;
+   //uint32_t padding;
 } PARAM_PAGE;
 
 static uint32_t GetFlashAddress()
 {
- // uint32_t flashSize = desig_get_flash_size();
-
-   //Always save parameters to last flash page
-   //FLASH_BASE + flashSize * 1024 - PARAM_BLKNUM * PARAM_BLKSIZE;
 	return FLASH_CONF_BASE + PARAM_BLKOFFSET;
 }
 
@@ -62,17 +59,12 @@ uint32_t parm_save()
    PARAM_PAGE parmPage;
    uint32_t idx;
    uint32_t paramAddress = GetFlashAddress();
-   uint8_t flashpage = (paramAddress - 0x80000000) / 2048;
-   uint64_t check = 0xFFFFFFFFFFFFFFFF;
-   uint64_t* baseAddress = (uint64_t*)paramAddress;
-
-   for (int i = 0; i < (PARAM_WORDS+1)/2; i++, baseAddress++)
-      check &= *baseAddress;
+   uint8_t flashpage = (paramAddress - FLASH_BASE) / FLASH_PAGE_SIZE;
 
    crc_reset();
    memset32((int*)&parmPage, 0xFFFFFFFF, PARAM_WORDS);
 
-   //Copy parameter values and keys to block structure
+   // Copy parameter values and keys to block structure
    for (idx = 0; idx < NUM_PARAMS && idx < Param::PARAM_LAST; idx++)
    {
       if (Param::GetType((Param::PARAM_NUM)idx) == Param::TYPE_PARAM)
@@ -84,22 +76,25 @@ uint32_t parm_save()
       }
    }
 
-   parmPage.crc = crc_calculate_block(((uint32_t*)&parmPage), (2 * NUM_PARAMS));
+   // Calculate CRC over the data portion of the structure, excluding the CRC
+   uint32_t* dataStart = (uint32_t*)&parmPage;
+   uint32_t dataSize = (sizeof(PARAM_PAGE) - sizeof(parmPage.crc)) / sizeof(uint32_t);
+   parmPage.crc = (uint64_t)crc_calculate_block(dataStart, dataSize);
+
    flash_unlock();
 
-   if (check != 0xFFFFFFFFFFFFFFFF)
+   // Always erase the page
+   flash_clear_status_flags();
+   flash_erase_page(flashpage);
+
+   // Program the flash page
+   for (idx = 0; idx < PARAM_DOUBLEWORDS; idx++)
    {
-	  flash_clear_status_flags();
-      flash_erase_page(flashpage);
+      uint64_t* pData = ((uint64_t*)&parmPage) + idx;
+      flash_clear_status_flags();
+      flash_program_double_word(paramAddress + idx * sizeof(uint64_t), *pData);
    }
 
-    for (idx = 0; idx < (PARAM_WORDS+1)/2; idx++)
-	{
-		//uint32_t* pData = ((uint32_t*)&parmPage) + idx;	This is for F1 / F4
-		uint64_t* pData = ((uint64_t*)&parmPage) + idx; // This appears to works 
-		flash_clear_status_flags();
-		flash_program_double_word(paramAddress + idx * sizeof(uint64_t), *pData);
-    }
    flash_lock();
    return parmPage.crc;
 }
@@ -114,25 +109,41 @@ uint32_t parm_save()
 int parm_load()
 {
    uint32_t paramAddress = GetFlashAddress();
-   PARAM_PAGE *parmPage = (PARAM_PAGE *)paramAddress;
+ 
+   const PARAM_PAGE *parmPage = (const PARAM_PAGE *)paramAddress;
 
-   crc_reset();
-   uint32_t crc = crc_calculate_block(((uint32_t*)parmPage), (2 * NUM_PARAMS));
+   // Use a 64-bit aligned buffer for reading flash data
+   uint64_t buffer[sizeof(PARAM_PAGE) / sizeof(uint64_t)];
+   const uint64_t* source = (const uint64_t*)parmPage;
+   uint64_t* dest = buffer;
 
-   if (crc == parmPage->crc)
+   // Read flash data into the buffer
+   for (uint32_t i = 0; i < sizeof(PARAM_PAGE) / sizeof(uint64_t); i++)
    {
+      *dest++ = *source++;
+   }
+
+   // Calculate CRC over the data portion of the buffer, excluding the CRC
+   uint32_t* dataStart = (uint32_t*)buffer;
+   uint32_t dataSize = 2 * NUM_PARAMS;
+   crc_reset();
+   uint32_t crc = crc_calculate_block(dataStart, dataSize);
+
+   // Compare the calculated CRC with the stored CRC
+   if (crc == (uint32_t)parmPage->crc)
+   {
+      // Load parameters if the CRC matches
       for (unsigned int idxPage = 0; idxPage < NUM_PARAMS; idxPage++)
       {
          Param::PARAM_NUM idx = Param::NumFromId(parmPage->data[idxPage].key);
          if (idx != Param::PARAM_INVALID && Param::GetType((Param::PARAM_NUM)idx) == Param::TYPE_PARAM)
-		 //if (idx != Param::PARAM_INVALID && parmPage->data[idxPage].key > 0)																	
          {
             Param::SetFixed(idx, parmPage->data[idxPage].value);
             Param::SetFlagsRaw(idx, parmPage->data[idxPage].flags);
          }
       }
-      return 0;
+      return 0; // Success
    }
-
-   return -1;
+   
+   return -1; // CRC error
 }

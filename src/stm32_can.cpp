@@ -285,12 +285,10 @@ void Stm32Can::ConfigureFilters()
 	uint32_t idMaskList[IDS_PER_BANK] = { 0, 0x7FF };
 	uint32_t extIdList[EXT_IDS_PER_BANK] = { 0, 0 };
 	int idIndex = 0, idMaskIndex = 0, extIdIndex = 0;
-	// G4 has 28 filter ids per CAN instance. For ease, now doing same as for F1. Will fix later
-	uint32_t filterId = canDev == CAN1 ? 0 : canDev == CAN2 ? 10: 20; //CAN1 0 - 9, CAN2 10 - 19, CAN3 20 -27
-	uint32_t extfilterId = canDev == CAN1 ? 0 : canDev == CAN2 ? 2: 4; // 0-1, 2-3, 4-5
-	//uint32_t  extfilterId = 0;
-	//if (canDev == CAN2) extfilterId = 2; // 2 ext filter IDs for each CAN dev 0-1, 2-3, 4-5
-	//if (canDev == CAN3) extfilterId = 4;
+	// G4 has 28 filter ids per CAN instance.
+	uint32_t filterId = 0;
+	uint32_t extfilterId = 0;
+
    for (int i = 0; i < nextUserMessageIndex; i++)
    {
       if (userIds[i] > 0x7ff)
