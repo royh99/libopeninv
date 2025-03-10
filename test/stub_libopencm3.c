@@ -60,6 +60,31 @@ void crc_reset(void)
 void flash_clear_status_flags()
 {
 }
+
 void flash_program_double_word(uint32_t address, uint64_t data)
+{
+}
+
+void flash_program(uint32_t address, const uint8_t *data, uint32_t len)
+{
+}
+
+void crc_reverse_output_enable()
+{
+}
+
+void crc_reverse_output_disable()
+{
+}
+
+void crc_set_reverse_input(uint32_t reverse_in)
+{
+}
+
+void crc_set_polysize(uint32_t polysize)
+{
+}
+
+void crc_set_polynomial(uint32_t polynomial)
 {
 }
