@@ -107,7 +107,7 @@ class CanMap: CanCallback
       void ReplaceParamEnumByUid(CANIDMAP *canMap);
       void ReplaceParamUidByEnum(CANIDMAP *canMap);
       uint32_t GetFlashAddress();
-	  uint32_t crc32_64(uint64_t *data, int size);											   
+	   uint32_t crc32_64(uint64_t *data, int size);											   
 };
 
 #endif // CANMAP_H
