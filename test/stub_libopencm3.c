@@ -88,3 +88,7 @@ void crc_set_polysize(uint32_t polysize)
 void crc_set_polynomial(uint32_t polynomial)
 {
 }
+
+void crc_set_initial(uint32_t initial)
+{
+}
