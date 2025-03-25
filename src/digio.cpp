@@ -73,7 +73,7 @@ void DigIo::Configure(uint32_t port, uint16_t pin, PinMode::PinMode pinMode)
          break;
       case PinMode::OUTPUT:
          mode = GPIO_MODE_OUTPUT;
-		 gpio_set_output_options(port, otype, speed, pin); // default otype PP	   
+		 gpio_set_output_options(port, otype, speed, pin); // default otype PP
          break;
       case PinMode::OUTPUT_OD:
          mode = GPIO_MODE_OUTPUT;

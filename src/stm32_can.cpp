@@ -135,7 +135,7 @@ Stm32Can::Stm32Can(uint32_t baseAddr, enum baudrates baudrate, bool remap)
 	fdcan_start(canDev, 100);
 	// Enable CAN RX interrupts.
 	fdcan_enable_irq(canDev, FDCAN_ILE_INT0);
-										
+
 }
 
 /** \brief Set baud rate to given value
@@ -159,7 +159,7 @@ void Stm32Can::SetBaudrate(enum baudrates baudrate)
 		false,          // silent?
 		0,  	        // n_sjw-1
 		canSpeed[baudrate].ts1,  	// n_ts1-1
-		canSpeed[baudrate].ts2,  	// n_ts2-1	
+		canSpeed[baudrate].ts2,  	// n_ts2-1
 		canSpeed[baudrate].prescaler); // n_br_presc-1 : Baud rate prescaler
 }
 
@@ -239,7 +239,7 @@ void Stm32Can::HandleTx()
 void Stm32Can::SetFilterBank(int& idIndex, uint32_t& filterId, uint32_t* idList)
 {
 	fdcan_set_std_filter(
-		canDev, 
+		canDev,
 		filterId,
 		FDCAN_SFT_DUAL,   // id_list_mode, FDCAN_SFT_ID_MASK, FDCAN_SFT_RANGE, FDCAN_SFT_DUAL
 		idList[0],
@@ -253,7 +253,7 @@ void Stm32Can::SetFilterBank(int& idIndex, uint32_t& filterId, uint32_t* idList)
 void Stm32Can::SetFilterBankMask(int& idIndex, uint32_t& filterId, uint32_t* idMaskList)
 {
 	fdcan_set_std_filter(
-		canDev,	   
+		canDev,
 		filterId,
 		FDCAN_SFT_MASK,
 		idMaskList[0], //id
@@ -273,7 +273,7 @@ void Stm32Can::SetFilterBank29(int& idIndex, uint32_t& filterId, uint32_t* idLis
 		FDCAN_EFT_DUAL,	// match ID1 or ID2
         idList[0],
 		idList[1],
-		(filterId & 1) ? FDCAN_SFEC_FIFO1 : FDCAN_SFEC_FIFO0); // even FIFO0 , odd FIFO1 select/enable 
+   (filterId & 1) ? FDCAN_SFEC_FIFO1 : FDCAN_SFEC_FIFO0); // even FIFO0 , odd FIFO1 select/enable
 	idIndex = 0;
 	filterId++;
 	idList[0] = idList[1] = 0;
@@ -337,32 +337,32 @@ void Stm32Can::ConfigureFilters()
 }
 
 /* Interrupt service routines */
-extern "C" void fdcan1_intr0_isr(void)
+extern "C" void fdcan1_it0_isr(void)
 {
 	Stm32Can::GetInterface(0)->HandleMessage();
 }
 
-extern "C" void fdcan1_intr1_isr()
+extern "C" void fdcan1_it1_isr()
 {
 	Stm32Can::GetInterface(0)->HandleTx();
 }
 
-extern "C" void fdcan2_intr0_isr()
+extern "C" void fdcan2_it0_isr()
 {
 	Stm32Can::GetInterface(1)->HandleMessage();
 }
 
-extern "C" void fdcan2_intr1_isr()
+extern "C" void fdcan2_it1_isr()
 {
 	Stm32Can::GetInterface(1)->HandleTx();
 }
 
-extern "C" void fdcan3_intr0_isr()
+extern "C" void fdcan3_it0_isr()
 {
 	Stm32Can::GetInterface(2)->HandleMessage();
 }
 
-extern "C" void fdcan3_intr1_isr()
+extern "C" void fdcan3_it1_isr()
 {
 	Stm32Can::GetInterface(2)->HandleTx();
 }

@@ -59,7 +59,12 @@ uint32_t parm_save()
    uint32_t idx;
    uint32_t paramAddress = GetFlashAddress();
    uint8_t flashpage = (paramAddress - FLASH_BASE) / FLASH_PAGE_SIZE; // page 8, 0x8004000
-   
+   // set to default CRC32
+   crc_set_polysize(CRC_CR_POLYSIZE_32);
+   crc_set_polynomial(0x04C11DB7);
+   crc_set_initial(0xFFFFFFFF);
+   crc_reverse_output_disable();
+   crc_set_reverse_input(CRC_CR_REV_IN_NONE);
    crc_reset();
    memset32((int*)&parmPage, 0xFFFFFFFF, PARAM_WORDS);
    
@@ -104,7 +109,12 @@ int parm_load()
    
    const PARAM_PAGE *parmPage = (const PARAM_PAGE *)paramAddress;
    const uint64_t* flash_data = (const uint64_t*)parmPage;
-   
+   // set to default CRC32
+   crc_set_polysize(CRC_CR_POLYSIZE_32);
+   crc_set_polynomial(0x04C11DB7);
+   crc_set_initial(0xFFFFFFFF);
+   crc_reverse_output_disable();
+   crc_set_reverse_input(CRC_CR_REV_IN_NONE);
    crc_reset();
    
 	for (uint8_t i = 0; i < NUM_PARAMS; i++)   // 

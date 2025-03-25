@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <libopencm3/stm32/dma.h>
-#include <libopencm3/stm32/dmamux.h>									
+#include <libopencm3/stm32/dmamux.h>
 #include <libopencm3/stm32/usart.h>
 #include <libopencm3/stm32/gpio.h>
 #include "linbus.h"
@@ -50,7 +50,7 @@ LinBus::LinBus(uint32_t usart, int baudrate)
    }
 
   gpio_mode_setup(hw->port, GPIO_MODE_AF, GPIO_PUPD_NONE, hw->pin);
-   gpio_set_af(remap ? hw->port_re : hw->port, GPIO_AF7, remap ? hw->pin_re : hw->pin);								  
+   gpio_set_af(remap ? hw->port_re : hw->port, GPIO_AF7, remap ? hw->pin_re : hw->pin);
 
    usart_set_baudrate(usart, baudrate);
    usart_set_databits(usart, 8);

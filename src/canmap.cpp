@@ -328,7 +328,7 @@ int CanMap::Remove(Param::PARAM_NUM param)
          forEachPosMap(curPos, curMap)
          {
             if (curPos->mapParam == param)
-            {              
+            {
                return Remove(rx, messageIdx, itemIdx); //return as item found
             }
             itemIdx++;
@@ -654,7 +654,7 @@ int CanMap::LoadFromFlash()
    if ((uint32_t)storedCrc == crc)
    {
       std::copy((uint64_t*)SENDMAP_ADDRESS(baseAddress), (uint64_t*)SENDMAP_ADDRESS(baseAddress) + SENDMAP_WORDS, (uint64_t*)canSendMap);
-      std::copy((uint64_t*)RECVMAP_ADDRESS(baseAddress), (uint64_t*)RECVMAP_ADDRESS(baseAddress) + RECVMAP_WORDS, (uint64_t*)canRecvMap); 
+      std::copy((uint64_t*)RECVMAP_ADDRESS(baseAddress), (uint64_t*)RECVMAP_ADDRESS(baseAddress) + RECVMAP_WORDS, (uint64_t*)canRecvMap);
       std::copy((uint64_t*)POSMAP_ADDRESS(baseAddress),  (uint64_t*)POSMAP_ADDRESS(baseAddress)  + POSMAP_WORDS,  (uint64_t*)canPosMap);
       ReplaceParamUidByEnum(canSendMap);
       ReplaceParamUidByEnum(canRecvMap);
