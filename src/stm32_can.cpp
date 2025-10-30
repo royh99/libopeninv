@@ -69,6 +69,7 @@ static const CANSPEED canSpeed[CanHardware::BaudLast] =
 Stm32Can::Stm32Can(uint32_t baseAddr, enum baudrates baudrate, bool remap)
    : sendCnt(0), canDev(baseAddr)
 {
+   fdcan_init(canDev, 100);
    switch (baseAddr)
    {
       case CAN1:
