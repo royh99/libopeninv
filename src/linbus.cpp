@@ -126,7 +126,7 @@ void LinBus::Request(uint8_t id, uint8_t* data, uint8_t len)
    dma_disable_channel(hw->dma, hw->dmatx);
    dma_set_number_of_data(hw->dma, hw->dmatx, sendLen);
    dma_disable_channel(hw->dma, hw->dmarx);
-   dma_set_memory_address(hw->dma, hw->dmarx, (uint32_t)recvBuffer);
+   dma_set_memory_address(hw->dma, hw->dmarx, (uintptr_t)recvBuffer);
    dma_set_number_of_data(hw->dma, hw->dmarx, sizeof(recvBuffer));
 
    sendBuffer[0] = 0x55; //Sync
@@ -139,7 +139,7 @@ void LinBus::Request(uint8_t id, uint8_t* data, uint8_t len)
 
    dma_clear_interrupt_flags(hw->dma, hw->dmatx, DMA_TCIF);
 
-   USART_RQR(hw->usart) |= USART_RQR_SBKRQ;
+   USART_RQR(usart) |= USART_RQR_SBKRQ;
    dma_enable_channel(hw->dma, hw->dmatx);
    dma_enable_channel(hw->dma, hw->dmarx);
 }
