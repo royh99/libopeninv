@@ -26,11 +26,11 @@
 
 const LinBus::HwInfo LinBus::hwInfo[] =
 {
-	{ USART1, DMA1, DMA_CHANNEL4, DMA_CHANNEL5, DMAMUX_CxCR_DMAREQ_ID_UART1_TX, DMAMUX_CxCR_DMAREQ_ID_UART1_RX, GPIOA, GPIO9  | GPIO10, GPIOC, GPIO4 | GPIO5 },
-   { USART2, DMA1, DMA_CHANNEL6, DMA_CHANNEL7, DMAMUX_CxCR_DMAREQ_ID_UART2_TX, DMAMUX_CxCR_DMAREQ_ID_UART2_RX, GPIOA, GPIO14 | GPIO15, GPIOD, GPIO5 | GPIO6 },
-	{ USART3, DMA1, DMA_CHANNEL2, DMA_CHANNEL3, DMAMUX_CxCR_DMAREQ_ID_UART3_TX, DMAMUX_CxCR_DMAREQ_ID_UART3_RX, GPIOB, GPIO10 | GPIO11, GPIOC, GPIO10 | GPIO11 },
+	{ USART1, DMA1, DMA_CHANNEL4, DMA_CHANNEL5, DMAMUX_CxCR_DMAREQ_ID_UART1_TX, DMAMUX_CxCR_DMAREQ_ID_UART1_RX, GPIOA, GPIO9, GPIO10 },
+   { USART2, DMA1, DMA_CHANNEL6, DMA_CHANNEL7, DMAMUX_CxCR_DMAREQ_ID_UART2_TX, DMAMUX_CxCR_DMAREQ_ID_UART2_RX, GPIOA, GPIO12, GPIO3 },
+	{ USART3, DMA1, DMA_CHANNEL2, DMA_CHANNEL3, DMAMUX_CxCR_DMAREQ_ID_UART3_TX, DMAMUX_CxCR_DMAREQ_ID_UART3_RX, GPIOB, GPIO10, GPIO11 },
 };
-
+2
 /** \brief Create a new LIN bus object but DO NOT configure hardware
  *
  */
@@ -65,9 +65,15 @@ void LinBus::Init( uint32_t usart, int baudrate)
       if (hw->usart == usart) break;
       hw++;
    }
+   
+    // TX: AF push-pull
+   gpio_mode_setup(hw->port, GPIO_MODE_AF, GPIO_PUPD_NONE, hw->pintx);
+   gpio_set_output_options(hw->port, GPIO_OTYPE_PP, GPIO_OSPEED_HIGH, hw->pintx);
+   gpio_set_af(hw->port, hw->af, hw->pintx);
 
-   gpio_mode_setup(hw->port, GPIO_MODE_AF, GPIO_PUPD_NONE, hw->pin);
-   gpio_set_af(remap ? hw->port_re : hw->port, GPIO_AF7, remap ? hw->pin_re : hw->pin);
+   // RX: AF input, no pull
+   gpio_mode_setup(hw->port, GPIO_MODE_AF, GPIO_PUPD_NONE, hw->pinrx);
+   gpio_set_af(hw->port, hw->af, hw->pinrx);
 
    usart_set_baudrate(usart, baudrate);
    usart_set_databits(usart, 8);
@@ -79,10 +85,9 @@ void LinBus::Init( uint32_t usart, int baudrate)
    usart_enable_tx_dma(usart);
    usart_enable_rx_dma(usart);
 
-   dma_disable_channel(DMA1, hw->dmatx);
    dma_channel_reset(DMA1, hw->dmatx);
    dma_set_read_from_memory(DMA1, hw->dmatx);
-   dma_set_peripheral_address(DMA1, hw->dmatx, (uint32_t)&USART_DR(usart));
+   dma_set_peripheral_address(DMA1, hw->dmatx, (uint32_t)&USART_TDR(usart));
    dma_set_memory_address(DMA1, hw->dmatx, (uint32_t)sendBuffer);
    dma_set_peripheral_size(DMA1, hw->dmatx, DMA_CCR_PSIZE_8BIT);
    dma_set_memory_size(DMA1, hw->dmatx, DMA_CCR_MSIZE_8BIT);
@@ -92,9 +97,8 @@ void LinBus::Init( uint32_t usart, int baudrate)
    dma_clear_interrupt_flags(DMA1, hw->dmatx, DMA_TCIF);
    dma_enable_channel(DMA1, hw->dmatx);
    
-   dma_disable_channel(DMA1, hw->dmarx);
    dma_channel_reset(DMA1, hw->dmarx);
-   dma_set_peripheral_address(DMA1, hw->dmarx, (uint32_t)&USART_DR(usart));
+   dma_set_peripheral_address(DMA1, hw->dmarx, (uint32_t)&USART_RDR(usart));
    dma_set_peripheral_size(DMA1, hw->dmarx, DMA_CCR_PSIZE_8BIT);
    dma_set_memory_size(DMA1, hw->dmarx, DMA_CCR_MSIZE_8BIT);
    dma_enable_memory_increment_mode(DMA1, hw->dmarx);
@@ -135,7 +139,7 @@ void LinBus::Request(uint8_t id, uint8_t* data, uint8_t len)
 
    dma_clear_interrupt_flags(hw->dma, hw->dmatx, DMA_TCIF);
 
-   USART_CR1(hw->usart) |= USART_CR1_SBK;
+   USART_RQR(hw->usart) |= USART_RQR_SBKRQ;
    dma_enable_channel(hw->dma, hw->dmatx);
    dma_enable_channel(hw->dma, hw->dmarx);
 }
