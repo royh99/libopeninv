@@ -30,7 +30,7 @@ const LinBus::HwInfo LinBus::hwInfo[] =
    { USART2, DMA1, DMA_CHANNEL6, DMA_CHANNEL7, DMAMUX_CxCR_DMAREQ_ID_UART2_TX, DMAMUX_CxCR_DMAREQ_ID_UART2_RX, GPIOA, GPIO12, GPIO3 },
 	{ USART3, DMA1, DMA_CHANNEL2, DMA_CHANNEL3, DMAMUX_CxCR_DMAREQ_ID_UART3_TX, DMAMUX_CxCR_DMAREQ_ID_UART3_RX, GPIOB, GPIO10, GPIO11 },
 };
-2
+
 /** \brief Create a new LIN bus object but DO NOT configure hardware
  *
  */
@@ -69,11 +69,11 @@ void LinBus::Init( uint32_t usart, int baudrate)
     // TX: AF push-pull
    gpio_mode_setup(hw->port, GPIO_MODE_AF, GPIO_PUPD_NONE, hw->pintx);
    gpio_set_output_options(hw->port, GPIO_OTYPE_PP, GPIO_OSPEED_HIGH, hw->pintx);
-   gpio_set_af(hw->port, hw->af, hw->pintx);
+   gpio_set_af(hw->port, GPIO_AF7, hw->pintx);
 
    // RX: AF input, no pull
    gpio_mode_setup(hw->port, GPIO_MODE_AF, GPIO_PUPD_NONE, hw->pinrx);
-   gpio_set_af(hw->port, hw->af, hw->pinrx);
+   gpio_set_af(hw->port, GPIO_AF7, hw->pinrx);
 
    usart_set_baudrate(usart, baudrate);
    usart_set_databits(usart, 8);
@@ -87,8 +87,8 @@ void LinBus::Init( uint32_t usart, int baudrate)
 
    dma_channel_reset(DMA1, hw->dmatx);
    dma_set_read_from_memory(DMA1, hw->dmatx);
-   dma_set_peripheral_address(DMA1, hw->dmatx, (uint32_t)&USART_TDR(usart));
-   dma_set_memory_address(DMA1, hw->dmatx, (uint32_t)sendBuffer);
+   dma_set_peripheral_address(DMA1, hw->dmatx, (uintptr_t)&USART_TDR(usart));
+   dma_set_memory_address(DMA1, hw->dmatx, (uintptr_t)sendBuffer);
    dma_set_peripheral_size(DMA1, hw->dmatx, DMA_CCR_PSIZE_8BIT);
    dma_set_memory_size(DMA1, hw->dmatx, DMA_CCR_MSIZE_8BIT);
    dma_enable_memory_increment_mode(DMA1, hw->dmatx);
@@ -98,7 +98,7 @@ void LinBus::Init( uint32_t usart, int baudrate)
    dma_enable_channel(DMA1, hw->dmatx);
    
    dma_channel_reset(DMA1, hw->dmarx);
-   dma_set_peripheral_address(DMA1, hw->dmarx, (uint32_t)&USART_RDR(usart));
+   dma_set_peripheral_address(DMA1, hw->dmarx, (uintptr_t)&USART_RDR(usart));
    dma_set_peripheral_size(DMA1, hw->dmarx, DMA_CCR_PSIZE_8BIT);
    dma_set_memory_size(DMA1, hw->dmarx, DMA_CCR_MSIZE_8BIT);
    dma_enable_memory_increment_mode(DMA1, hw->dmarx);
