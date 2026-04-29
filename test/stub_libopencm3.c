@@ -93,7 +93,15 @@ void crc_set_initial(uint32_t initial)
 {
 }
 
-void gpio_set_mode(uint32_t gpioport, uint8_t mode, uint8_t cnf, uint16_t gpios)
+void gpio_mode_setup(uint32_t gpioport, uint8_t mode, uint8_t pull_up_down, uint16_t gpios)
+{
+}
+
+void gpio_set_output_options(uint32_t gpioport, uint8_t otype, uint8_t speed, uint16_t gpios)
+{
+}
+ 
+void gpio_set_af(uint32_t gpioport, uint8_t alt_func_num, uint16_t gpios)
 {
 }
 
@@ -181,6 +189,14 @@ void dma_enable_channel(uint32_t dma, uint8_t channel)
 }
 
 void dma_disable_channel(uint32_t dma, uint8_t channel)
+{
+}
+
+void dmamux_reset_dma_channel(uint32_t dmamux, uint8_t channel)
+{
+}
+ 
+void dmamux_set_dma_channel_request(uint32_t dmamux, uint8_t channel, uint8_t request_id)
 {
 }
 

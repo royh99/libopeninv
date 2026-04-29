@@ -6,7 +6,7 @@ CPP		= g++
 LD		= g++
 CFLAGS    = -std=c99 -ggdb -DSTM32G4 -DCAN_SIGNED=$(CAN_SIGNED) -Itest-include -I../include -I../../libopencm3/include
 CPPFLAGS    = -ggdb -DSTM32G4 -DCAN_SIGNED=$(CAN_SIGNED) -Itest-include -I../include -I../../libopencm3/include
-LDFLAGS     = -g
+LDFLAGS     = -g -L../../libopencm3/lib
 BINARY		= test_libopeninv
 OBJS		= test_main.o fu.o test_fu.o test_fp.o my_fp.o my_string.o params.o \
 			  stub_canhardware.o test_canmap.o canmap.o test_linbus.o linbus.o \
