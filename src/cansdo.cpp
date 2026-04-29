@@ -18,20 +18,25 @@
  */
 #include "cansdo.h"
 #include "my_math.h"
+#include "errormessage.h"
 
 #define SDO_REQ_ID_BASE       0x600U
 #define SDO_REP_ID_BASE       0x580U
 
 #define SDO_INDEX_PARAMS      0x2000
 #define SDO_INDEX_PARAM_UID   0x2100
+#define SDO_INDEX_PARAM_FLAGS 0x2200
 #define SDO_INDEX_MAP_TX      0x3000
 #define SDO_INDEX_MAP_RX      0x3001
 #define SDO_INDEX_MAP_RD      0x3100
 #define SDO_INDEX_STRINGS     0x5001
+#define SDO_INDEX_ERROR_NUM   0x5003
+#define SDO_INDEX_ERROR_TIME  0x5004
 
 #define PRINT_BUF_ENQUEUE(c)  printBuffer[(printByteIn++) & (sizeof(printBuffer) - 1)] = c
 #define PRINT_BUF_DEQUEUE()   printBuffer[(printByteOut++) & (sizeof(printBuffer) - 1)]
 #define PRINT_BUF_EMPTY()     ((printByteOut - printByteIn) == sizeof(printBuffer))
+#define PRINT_TIMEOUT         1000
 
 /** \brief
  *
@@ -40,7 +45,10 @@
  *
  */
 CanSdo::CanSdo(CanHardware* hw, CanMap* cm)
- : canHardware(hw), canMap(cm), nodeId(1), remoteNodeId(255), printRequest(-1)
+ : canHardware(hw), canMap(cm), nodeId(1), remoteNodeId(255), printRequest(-1),
+   printByteIn(0), printByteOut(sizeof(printBuffer)), printTimeout(PRINT_TIMEOUT),
+   mapParam(Param::PARAM_INVALID), mapId(0xFFFFFFFF), mapInfo{}, sdoReplyValid(false), sdoReplyData(0),
+   pendingUserSpaceSdo(false)
 {
    canHardware->AddCallback(this);
    HandleClear();
@@ -184,6 +192,29 @@ void CanSdo::ProcessSDO(uint32_t data[2])
          sdo->data = SDO_ERR_INVIDX;
       }
    }
+   else if (sdo->index == SDO_INDEX_PARAM_FLAGS)
+   {
+      Param::PARAM_NUM paramIdx = (Param::PARAM_NUM)sdo->subIndex;
+
+      if (paramIdx < Param::PARAM_LAST)
+      {
+         if (sdo->cmd == SDO_WRITE)
+         {
+            Param::SetFlagsRaw(paramIdx, (uint8_t)sdo->data);
+            sdo->cmd = SDO_WRITE_REPLY;
+         }
+         else if (sdo->cmd == SDO_READ)
+         {
+            sdo->data = (uint32_t)Param::GetFlag(paramIdx);
+            sdo->cmd = SDO_READ_REPLY;
+         }
+      }
+      else
+      {
+         sdo->cmd = SDO_ABORT;
+         sdo->data = SDO_ERR_INVIDX;
+      }
+   }
    else if (0 != canMap && sdo->index == SDO_INDEX_MAP_TX)
    {
       AddCanMap(sdo, false);
@@ -196,6 +227,32 @@ void CanSdo::ProcessSDO(uint32_t data[2])
    {
       ReadOrDeleteCanMap(sdo);
    }
+   else if (sdo->index == SDO_INDEX_ERROR_NUM)
+   {
+      if (sdo->cmd == SDO_READ)
+      {
+         sdo->data = ErrorMessage::GetErrorNum(sdo->subIndex);
+         sdo->cmd = SDO_READ_REPLY;
+      }
+      else
+      {
+         sdo->cmd = SDO_ABORT;
+         sdo->data = SDO_ERR_INVIDX;
+      }
+   }
+   else if (sdo->index == SDO_INDEX_ERROR_TIME)
+   {
+      if (sdo->cmd == SDO_READ)
+      {
+         sdo->data = ErrorMessage::GetErrorTime(sdo->subIndex);
+         sdo->cmd = SDO_READ_REPLY;
+      }
+      else
+      {
+         sdo->cmd = SDO_ABORT;
+         sdo->data = SDO_ERR_INVIDX;
+      }
+   }
    else
    {
       if (!ProcessSpecialSDOObjects(sdo))
@@ -204,10 +261,31 @@ void CanSdo::ProcessSDO(uint32_t data[2])
    canHardware->Send(0x580 + nodeId, data);
 }
 
+/** \brief count down PutChar character send timeout
+ *
+ * \param callingFrequency in ms. This is subtracted from the remaining wait time
+ * \return void
+ *
+ */
+void CanSdo::TriggerTimeout(int callingFrequency)
+{
+   if (printTimeout > 0)
+   {
+      printTimeout -= callingFrequency;
+   }
+   if (printTimeout < 0)
+   {
+      printTimeout = 0;
+   }
+}
+
 void CanSdo::PutChar(char c)
 {
+   if (printTimeout == 0) return; //last call to PutChar resulted in a timeout. Do not recover until the next burst
+
+   printTimeout = PRINT_TIMEOUT;
    //When print buffer is full, wait
-   while (printByteIn == printByteOut);
+   while (printByteIn == printByteOut && printTimeout > 0);
 
    PRINT_BUF_ENQUEUE(c);
    printRequest = -1; //We can clear the print start trigger as we've obviously started printing
@@ -227,6 +305,7 @@ bool CanSdo::ProcessSpecialSDOObjects(SdoFrame* sdo)
       {
          sdo->data = 65535; //this should be the size of JSON but we don't know this in advance. Hmm.
          sdo->cmd = SDO_RESPONSE_UPLOAD | SDO_SIZE_SPECIFIED;
+         printTimeout = PRINT_TIMEOUT;
          printByteIn = 0;
          printByteOut = sizeof(printBuffer); //both point to the beginning of the physical buffer but virtually they are 64 bytes apart
          printRequest = sdo->subIndex;
@@ -248,7 +327,7 @@ void CanSdo::ReadOrDeleteCanMap(SdoFrame* sdo)
 {
    bool rx = (sdo->index & 0x80) != 0;
    uint32_t canId;
-   uint8_t itemIdx = MAX(0, sdo->subIndex - 1) / 2;
+   uint8_t itemIdx = sdo->subIndex == 0 ? 0 : (sdo->subIndex - 1) / 2;
    const CanMap::CANPOS* canPos = canMap->GetMap(rx, sdo->index & 0x3f, itemIdx, canId);
 
    if (sdo->cmd == SDO_READ)
@@ -274,6 +353,7 @@ void CanSdo::ReadOrDeleteCanMap(SdoFrame* sdo)
    else if (sdo->cmd == SDO_WRITE && canPos != 0 && sdo->data == 0)
    {
       canMap->Remove(rx, sdo->index & 0x3f, itemIdx);
+      sdo->cmd = SDO_WRITE_REPLY;
    }
    else
    {

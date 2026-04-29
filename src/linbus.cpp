@@ -27,29 +27,46 @@
 const LinBus::HwInfo LinBus::hwInfo[] =
 {
 	{ USART1, DMA1, DMA_CHANNEL4, DMA_CHANNEL5, DMAMUX_CxCR_DMAREQ_ID_UART1_TX, DMAMUX_CxCR_DMAREQ_ID_UART1_RX, GPIOA, GPIO9  | GPIO10, GPIOC, GPIO4 | GPIO5 },
-    { USART2, DMA1, DMA_CHANNEL6, DMA_CHANNEL7, DMAMUX_CxCR_DMAREQ_ID_UART2_TX, DMAMUX_CxCR_DMAREQ_ID_UART2_RX, GPIOA, GPIO14 | GPIO15, GPIOD, GPIO5 | GPIO6 },
+   { USART2, DMA1, DMA_CHANNEL6, DMA_CHANNEL7, DMAMUX_CxCR_DMAREQ_ID_UART2_TX, DMAMUX_CxCR_DMAREQ_ID_UART2_RX, GPIOA, GPIO14 | GPIO15, GPIOD, GPIO5 | GPIO6 },
 	{ USART3, DMA1, DMA_CHANNEL2, DMA_CHANNEL3, DMAMUX_CxCR_DMAREQ_ID_UART3_TX, DMAMUX_CxCR_DMAREQ_ID_UART3_RX, GPIOB, GPIO10 | GPIO11, GPIOC, GPIO10 | GPIO11 },
 };
 
+/** \brief Create a new LIN bus object but DO NOT configure hardware
+ *
+ */
+LinBus::LinBus()
+   : hw(hwInfo), sendBuffer{}, recvBuffer{}
+{
+}
 
-/** \brief Create a new LIN bus object and initialize USART, GPIO and DMA
- * \pre According USART, GPIO and DMA clocks must be enabled
+/** \brief Create a new LIN bus object and initialize USART and DMA
+ * \pre Associated USART, GPIO and DMA clocks must be enabled.
  * \param usart USART base address
  * \param baudrate 9600 or 19200
  *
  */
 LinBus::LinBus(uint32_t usart, int baudrate)
-   : usart(usart)
+   : hw(hwInfo), sendBuffer{}, recvBuffer{}
 {
-   hw = hwInfo;
+   Init(usart, baudrate);
+}
 
+/** \brief Initialise the hardware associated with a previously created LIN bus
+ * object
+ * \pre Associated USART, GPIO and DMA clocks must be enabled.
+ * \param usart USART base address
+ * \param baudrate 9600 or 19200
+ *
+ */
+void LinBus::Init( uint32_t usart, int baudrate)
+{
    for (uint32_t i = 0; i < HWINFO_ENTRIES; i++)
    {
       if (hw->usart == usart) break;
       hw++;
    }
 
-  gpio_mode_setup(hw->port, GPIO_MODE_AF, GPIO_PUPD_NONE, hw->pin);
+   gpio_mode_setup(hw->port, GPIO_MODE_AF, GPIO_PUPD_NONE, hw->pin);
    gpio_set_af(remap ? hw->port_re : hw->port, GPIO_AF7, remap ? hw->pin_re : hw->pin);
 
    usart_set_baudrate(usart, baudrate);
@@ -102,11 +119,11 @@ void LinBus::Request(uint8_t id, uint8_t* data, uint8_t len)
 
    if (len > 8) return;
 
-   dma_disable_channel(DMA1, hw->dmatx);
-   dma_set_number_of_data(DMA1, hw->dmatx, sendLen);
-   dma_disable_channel(DMA1, hw->dmarx);
-   dma_set_memory_address(DMA1, hw->dmarx, (uint32_t)recvBuffer);
-   dma_set_number_of_data(DMA1, hw->dmarx, sizeof(recvBuffer));
+   dma_disable_channel(hw->dma, hw->dmatx);
+   dma_set_number_of_data(hw->dma, hw->dmatx, sendLen);
+   dma_disable_channel(hw->dma, hw->dmarx);
+   dma_set_memory_address(hw->dma, hw->dmarx, (uint32_t)recvBuffer);
+   dma_set_number_of_data(hw->dma, hw->dmarx, sizeof(recvBuffer));
 
    sendBuffer[0] = 0x55; //Sync
    sendBuffer[1] = Parity(id);
@@ -116,11 +133,11 @@ void LinBus::Request(uint8_t id, uint8_t* data, uint8_t len)
 
    sendBuffer[len + 2] = Checksum(sendBuffer[1], data, len);
 
-   dma_clear_interrupt_flags(DMA1, hw->dmatx, DMA_TCIF);
+   dma_clear_interrupt_flags(hw->dma, hw->dmatx, DMA_TCIF);
 
-   USART_CR1(usart) |= USART_CR1_SBK;
-   dma_enable_channel(DMA1, hw->dmatx);
-   dma_enable_channel(DMA1, hw->dmarx);
+   USART_CR1(hw->usart) |= USART_CR1_SBK;
+   dma_enable_channel(hw->dma, hw->dmatx);
+   dma_enable_channel(hw->dma, hw->dmarx);
 }
 
 /** \brief Check whether we received valid data with given PID and length
@@ -132,7 +149,7 @@ void LinBus::Request(uint8_t id, uint8_t* data, uint8_t len)
  */
 bool LinBus::HasReceived(uint8_t id, uint8_t requiredLen)
 {
-   int numRcvd = dma_get_number_of_data(DMA1, hw->dmarx);
+   int numRcvd = dma_get_number_of_data(hw->dma, hw->dmarx);
    int receiveIdx = sizeof(recvBuffer) - numRcvd;
 
    if (requiredLen > 8) return false;
@@ -164,7 +181,7 @@ uint8_t LinBus::Checksum(uint8_t pid, uint8_t* data, int len)
    for (int i = 0; i < len; i++)
    {
       uint16_t tmp = (uint16_t)checksum + (uint16_t)data[i];
-      if (tmp > 256) tmp -= 255;
+      if (tmp >= 256) tmp -= 255;
       checksum = tmp;
    }
    return checksum ^ 0xff;

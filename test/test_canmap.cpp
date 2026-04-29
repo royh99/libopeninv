@@ -66,7 +66,7 @@ std::ostream& operator<<(std::ostream& o, const std::array<uint8_t, 8>& data)
     return o;
 }
 
-bool FrameMatches(const std::array<uint8_t, 8>& expected)
+bool FrameMatches(const std::array<uint8_t, 8>& expected, uint8_t dlc)
 {
     if (canStub->m_canId != CanId)
     {
@@ -75,10 +75,10 @@ bool FrameMatches(const std::array<uint8_t, 8>& expected)
         return false;
     }
 
-    if (canStub->m_len != 8)
+    if (canStub->m_len != dlc)
     {
-        std::cout << "CAN frame length doesn't match. Expected: 8 "
-                  << "Actual: " << canStub->m_len << "\n";
+        std::cout << "CAN frame length doesn't match. Expected: " << dlc
+                  << " Actual: " << canStub->m_len << "\n";
         return false;
     }
 
@@ -106,7 +106,7 @@ static void send_map_little_endian_byte_in_first_word()
 
     canMap->SendAll();
 
-    ASSERT(FrameMatches({ 0x42, 0, 0, 0, 0, 0, 0, 0 }));
+    ASSERT(FrameMatches({ 0x42, 0, 0, 0, 0, 0, 0, 0 }, 1));
 }
 
 static void send_map_little_endian_16_bit_in_first_word()
@@ -116,7 +116,7 @@ static void send_map_little_endian_16_bit_in_first_word()
 
     canMap->SendAll();
 
-    ASSERT(FrameMatches({ 0x42, 0, 0, 0, 0, 0, 0, 0 }));
+    ASSERT(FrameMatches({ 0x42, 0, 0, 0, 0, 0, 0, 0 }, 2));
 }
 
 static void send_map_little_endian_32_bit_in_first_word()
@@ -126,7 +126,7 @@ static void send_map_little_endian_32_bit_in_first_word()
 
     canMap->SendAll();
 
-    ASSERT(FrameMatches({ 0x42, 0, 0, 0, 0, 0, 0, 0 }));
+    ASSERT(FrameMatches({ 0x42, 0, 0, 0, 0, 0, 0, 0 }, 4));
 }
 
 static void send_map_little_endian_32_bit_in_second_word()
@@ -136,7 +136,7 @@ static void send_map_little_endian_32_bit_in_second_word()
 
     canMap->SendAll();
 
-    ASSERT(FrameMatches({ 0, 0, 0, 0, 0x42, 0, 0, 0 }));
+    ASSERT(FrameMatches({ 0, 0, 0, 0, 0x42, 0, 0, 0 }, 8));
 }
 
 static void send_map_little_endian_negative_number_16_bit_in_first_word()
@@ -146,7 +146,7 @@ static void send_map_little_endian_negative_number_16_bit_in_first_word()
 
     canMap->SendAll();
 
-    ASSERT(FrameMatches({ 0xfe, 0xff, 0, 0, 0, 0, 0, 0 }));
+    ASSERT(FrameMatches({ 0xfe, 0xff, 0, 0, 0, 0, 0, 0 }, 2));
 }
 
 static void send_map_little_endian_negative_number_24_bit_in_first_word()
@@ -156,7 +156,7 @@ static void send_map_little_endian_negative_number_24_bit_in_first_word()
 
     canMap->SendAll();
 
-    ASSERT(FrameMatches({ 0xfe, 0xff, 0xff, 0, 0, 0, 0, 0 }));
+    ASSERT(FrameMatches({ 0xfe, 0xff, 0xff, 0, 0, 0, 0, 0 }, 3));
 }
 
 static void send_map_little_endian_negative_number_32_bit_in_first_word()
@@ -166,7 +166,7 @@ static void send_map_little_endian_negative_number_32_bit_in_first_word()
 
     canMap->SendAll();
 
-    ASSERT(FrameMatches({ 0xfe, 0xff, 0xff, 0xff, 0, 0, 0, 0 }));
+    ASSERT(FrameMatches({ 0xfe, 0xff, 0xff, 0xff, 0, 0, 0, 0 } , 4));
 }
 
 static void send_map_little_endian_negative_number_32_bit_in_second_word()
@@ -176,7 +176,7 @@ static void send_map_little_endian_negative_number_32_bit_in_second_word()
 
     canMap->SendAll();
 
-    ASSERT(FrameMatches({ 0, 0, 0, 0, 0xfe, 0xff, 0xff, 0xff }));
+    ASSERT(FrameMatches({ 0, 0, 0, 0, 0xfe, 0xff, 0xff, 0xff }, 8));
 }
 
 static void send_map_little_endian_negative_number_32_bit_spanning_both_words()
@@ -186,7 +186,7 @@ static void send_map_little_endian_negative_number_32_bit_spanning_both_words()
 
     canMap->SendAll();
 
-    ASSERT(FrameMatches({ 0, 0, 0xfe, 0xff, 0xff, 0xff, 0, 0 }));
+    ASSERT(FrameMatches({ 0, 0, 0xfe, 0xff, 0xff, 0xff, 0, 0 }, 6));
 }
 
 static void send_map_little_endian_negative_number_32_bit_mostly_in_first_word()
@@ -196,7 +196,7 @@ static void send_map_little_endian_negative_number_32_bit_mostly_in_first_word()
 
     canMap->SendAll();
 
-    ASSERT(FrameMatches({ 0, 0xfe, 0xff, 0xff, 0xff, 0, 0, 0 }));
+    ASSERT(FrameMatches({ 0, 0xfe, 0xff, 0xff, 0xff, 0, 0, 0 }, 5));
 }
 
 static void
@@ -207,7 +207,7 @@ send_map_little_endian_negative_number_32_bit_mostly_in_second_word()
 
     canMap->SendAll();
 
-    ASSERT(FrameMatches({ 0, 0, 0, 0xfe, 0xff, 0xff, 0xff, 0 }));
+    ASSERT(FrameMatches({ 0, 0, 0, 0xfe, 0xff, 0xff, 0xff, 0 }, 7));
 }
 
 static void send_map_little_endian_negative_number_16_bit_at_end_of_frame()
@@ -217,7 +217,7 @@ static void send_map_little_endian_negative_number_16_bit_at_end_of_frame()
 
     canMap->SendAll();
 
-    ASSERT(FrameMatches({ 0, 0, 0, 0, 0, 0, 0xfe, 0xff }));
+    ASSERT(FrameMatches({ 0, 0, 0, 0, 0, 0, 0xfe, 0xff }, 8));
 }
 
 static void send_map_big_endian_byte_in_first_word()
@@ -227,7 +227,7 @@ static void send_map_big_endian_byte_in_first_word()
 
     canMap->SendAll();
 
-    ASSERT(FrameMatches({ 0x42, 0, 0, 0, 0, 0, 0, 0 }));
+    ASSERT(FrameMatches({ 0x42, 0, 0, 0, 0, 0, 0, 0 }, 1));
 }
 
 static void send_map_big_endian_16_bit_in_first_word()
@@ -237,7 +237,7 @@ static void send_map_big_endian_16_bit_in_first_word()
 
     canMap->SendAll();
 
-    ASSERT(FrameMatches({ 0, 0, 0x42, 0, 0, 0, 0, 0 }));
+    ASSERT(FrameMatches({ 0, 0, 0x42, 0, 0, 0, 0, 0 }, 3));
 }
 
 static void send_map_big_endian_32_bit_in_first_word()
@@ -247,7 +247,7 @@ static void send_map_big_endian_32_bit_in_first_word()
 
     canMap->SendAll();
 
-    ASSERT(FrameMatches({ 0, 0, 0, 0x42, 0, 0, 0, 0 }));
+    ASSERT(FrameMatches({ 0, 0, 0, 0x42, 0, 0, 0, 0 }, 4));
 }
 
 static void send_map_big_endian_negative_byte_in_first_word()
@@ -257,7 +257,7 @@ static void send_map_big_endian_negative_byte_in_first_word()
 
     canMap->SendAll();
 
-    ASSERT(FrameMatches({ 0xfe, 0, 0, 0, 0, 0, 0, 0 }));
+    ASSERT(FrameMatches({ 0xfe, 0, 0, 0, 0, 0, 0, 0 }, 1));
 }
 
 static void send_map_big_endian_negative_16_bit_in_first_word()
@@ -267,7 +267,7 @@ static void send_map_big_endian_negative_16_bit_in_first_word()
 
     canMap->SendAll();
 
-    ASSERT(FrameMatches({ 0, 0xff, 0xfe, 0, 0, 0, 0, 0 }));
+    ASSERT(FrameMatches({ 0, 0xff, 0xfe, 0, 0, 0, 0, 0 }, 3));
 }
 
 static void send_map_big_endian_negative_24_bit_in_first_word()
@@ -277,7 +277,7 @@ static void send_map_big_endian_negative_24_bit_in_first_word()
 
     canMap->SendAll();
 
-    ASSERT(FrameMatches({ 0xff, 0xff, 0xfe, 0, 0, 0, 0, 0 }));
+    ASSERT(FrameMatches({ 0xff, 0xff, 0xfe, 0, 0, 0, 0, 0 }, 3));
 }
 
 static void send_map_big_endian_negative_32_bit_in_first_word()
@@ -287,7 +287,7 @@ static void send_map_big_endian_negative_32_bit_in_first_word()
 
     canMap->SendAll();
 
-    ASSERT(FrameMatches({ 0xff, 0xff, 0xff, 0xfe, 0, 0, 0, 0 }));
+    ASSERT(FrameMatches({ 0xff, 0xff, 0xff, 0xfe, 0, 0, 0, 0 }, 4));
 }
 
 static void send_map_big_endian_negative_byte_in_second_word()
@@ -297,7 +297,7 @@ static void send_map_big_endian_negative_byte_in_second_word()
 
     canMap->SendAll();
 
-    ASSERT(FrameMatches({ 0, 0, 0, 0, 0xfe, 0, 0, 0 }));
+    ASSERT(FrameMatches({ 0, 0, 0, 0, 0xfe, 0, 0, 0 }, 5));
 }
 
 static void send_map_big_endian_negative_16_bit_in_second_word()
@@ -307,7 +307,7 @@ static void send_map_big_endian_negative_16_bit_in_second_word()
 
     canMap->SendAll();
 
-    ASSERT(FrameMatches({ 0, 0, 0, 0, 0xff, 0xfe, 0, 0 }));
+    ASSERT(FrameMatches({ 0, 0, 0, 0, 0xff, 0xfe, 0, 0 }, 6));
 }
 
 static void send_map_big_endian_negative_24_bit_in_second_word()
@@ -317,7 +317,7 @@ static void send_map_big_endian_negative_24_bit_in_second_word()
 
     canMap->SendAll();
 
-    ASSERT(FrameMatches({ 0, 0, 0, 0, 0xff, 0xff, 0xfe, 0 }));
+    ASSERT(FrameMatches({ 0, 0, 0, 0, 0xff, 0xff, 0xfe, 0 }, 7));
 }
 
 static void send_map_big_endian_negative_32_bit_in_second_word()
@@ -327,7 +327,7 @@ static void send_map_big_endian_negative_32_bit_in_second_word()
 
     canMap->SendAll();
 
-    ASSERT(FrameMatches({ 0, 0, 0, 0, 0xff, 0xff, 0xff, 0xfe }));
+    ASSERT(FrameMatches({ 0, 0, 0, 0, 0xff, 0xff, 0xff, 0xfe }, 8));
 }
 
 static void send_map_big_endian_negative_number_24_bit_at_end_of_frame()
@@ -337,7 +337,7 @@ static void send_map_big_endian_negative_number_24_bit_at_end_of_frame()
 
     canMap->SendAll();
 
-    ASSERT(FrameMatches({ 0, 0, 0, 0, 0, 0xff, 0xff, 0xfe }));
+    ASSERT(FrameMatches({ 0, 0, 0, 0, 0, 0xff, 0xff, 0xfe }, 8));
 }
 
 static void send_map_big_endian_negative_16_bit_spanning_both_words()
@@ -347,7 +347,7 @@ static void send_map_big_endian_negative_16_bit_spanning_both_words()
 
     canMap->SendAll();
 
-    ASSERT(FrameMatches({ 0, 0, 0, 0xff, 0xfe, 0, 0, 0 }));
+    ASSERT(FrameMatches({ 0, 0, 0, 0xff, 0xfe, 0, 0, 0 }, 5));
 }
 
 static void send_map_big_endian_negative_32_bit_spanning_both_words()
@@ -357,7 +357,7 @@ static void send_map_big_endian_negative_32_bit_spanning_both_words()
 
     canMap->SendAll();
 
-    ASSERT(FrameMatches({ 0, 0, 0xff, 0xff, 0xff, 0xfe, 0, 0 }));
+    ASSERT(FrameMatches({ 0, 0, 0xff, 0xff, 0xff, 0xfe, 0, 0 }, 6));
 }
 
 static void send_map_big_endian_negative_32_bit_mostly_in_first_word()
@@ -367,7 +367,7 @@ static void send_map_big_endian_negative_32_bit_mostly_in_first_word()
 
     canMap->SendAll();
 
-    ASSERT(FrameMatches({ 0, 0xff, 0xff, 0xff, 0xfe, 0, 0, 0 }));
+    ASSERT(FrameMatches({ 0, 0xff, 0xff, 0xff, 0xfe, 0, 0, 0 }, 5));
 }
 
 static void send_map_big_endian_negative_32_bit_mostly_in_second_word()
@@ -377,7 +377,7 @@ static void send_map_big_endian_negative_32_bit_mostly_in_second_word()
 
     canMap->SendAll();
 
-    ASSERT(FrameMatches({ 0, 0, 0, 0xff, 0xff, 0xff, 0xfe, 0 }));
+    ASSERT(FrameMatches({ 0, 0, 0, 0xff, 0xff, 0xff, 0xfe, 0 }, 7));
 }
 
 static void receive_map_little_endian_byte_in_first_word()
@@ -580,6 +580,52 @@ static void fail_to_map_with_invalid_big_endian_total_struct_offset()
         CAN_ERR_INVALID_OFS);
 }
 
+
+// Regression test: GetMap and Remove must not access out-of-bounds send map entry
+// at ididx/messageIdx == MAX_MESSAGES, which would alias canRecvMap[0]
+static void get_map_at_max_messages_returns_null()
+{
+    // Add a recv mapping so canRecvMap[0] has data
+    canMap->AddRecv(Param::ocurlim, 0x300, 0, 8, 1.0, 0);
+
+    uint32_t canId = 0;
+    // Querying tx map at index MAX_MESSAGES must return null (not canRecvMap[0]'s data)
+    const CanMap::CANPOS* pos = canMap->GetMap(false, MAX_MESSAGES, 0, canId);
+    ASSERT(pos == 0);
+}
+
+// Regression test: Remove with messageIdx == MAX_MESSAGES must not delete canRecvMap[0]
+static void remove_at_max_messages_is_safe()
+{
+    // Add a recv mapping so canRecvMap[0] has data
+    canMap->AddRecv(Param::ocurlim, 0x300, 0, 8, 1.0, 0);
+
+    // Attempting to remove a tx message at index MAX_MESSAGES must be a no-op
+    int removed = canMap->Remove(false, MAX_MESSAGES, 0);
+    ASSERT(removed == 0);
+
+    // The recv mapping must still be intact
+    uint32_t canId = 0;
+    const CanMap::CANPOS* pos = canMap->GetMap(true, 0, 0, canId);
+    ASSERT(pos != 0);
+    ASSERT(canId == 0x300);
+}
+
+static void send_map_by_index_sends_only_selected_message()
+{
+    canMap->AddSend(Param::ocurlim, 0x101, 0, 8, 1.0, 0);
+    canMap->AddSend(Param::amp, 0x102, 0, 8, 1.0, 0);
+    Param::SetFloat(Param::ocurlim, 0x11);
+    Param::SetFloat(Param::amp, 0x22);
+
+    ASSERT(canMap->SendByIndex(1));
+    ASSERT(canStub->m_canId == 0x102);
+    ASSERT(canStub->m_data[0] == 0x22);
+    ASSERT(canStub->m_len == 1);
+
+    ASSERT(!canMap->SendByIndex(2));
+    ASSERT(!canMap->SendByIndex(MAX_MESSAGES));
+}
 
 static void create_and_delete_complex_map_once()
 {
@@ -1172,4 +1218,7 @@ REGISTER_TEST(
     fail_to_map_with_invalid_big_endian_length,
     fail_to_map_with_invalid_big_endian_total_struct_offset,
     create_and_delete_complex_map_once,
+    get_map_at_max_messages_returns_null,
+    remove_at_max_messages_is_safe,
+    send_map_by_index_sends_only_selected_message,
     RECEIVE_TESTS);

@@ -30,11 +30,34 @@
 #include <libopencm3/cm3/nvic.h>
 #include <libopencm3/cm3/systick.h>
 #include "stm32_can.h"
+#include "cortex.h"
+
+//Some functions use the "register" keyword which C++ doesn't like
+//We can safely ignore that as we don't even use those functions
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wregister"
+#include <libopencm3/cm3/cortex.h>
+#pragma GCC diagnostic pop
 
 #define MAX_INTERFACES        3
 #define IDS_PER_BANK          2
 #define EXT_IDS_PER_BANK      2
 
+
+// To allow concurrent sending of CAN frames from different contexts we need to
+// disable interrupts. Some projects have hard realtime requirements which mean
+// we cannot disable all interrupts. These projects should define the highest
+// interrupt priority users of the CAN interface here. If not defined we assume
+// that all interrupts can be disabled.
+//
+// CAN_MAX_IRQ_PRIORITY should match the priority passed to nvic_set_priority()
+#ifdef CAN_MAX_IRQ_PRIORITY
+#define DISABLE_CAN_USER_INTERRUPTS()  cm_set_basepriority(CAN_MAX_IRQ_PRIORITY);
+#define ENABLE_CAN_USER_INTERRUPTS()   cm_set_basepriority(CM_BASEPRI_ENABLE_INTERRUPTS);
+#else
+#define DISABLE_CAN_USER_INTERRUPTS()  cm_disable_interrupts()
+#define ENABLE_CAN_USER_INTERRUPTS()   cm_enable_interrupts()
+#endif // CAN_MAX_IRQ_PRIORITY
 
 struct CANSPEED
 {
@@ -52,6 +75,7 @@ static const CANSPEED canSpeed[CanHardware::BaudLast] =
 	{ 11, 2, 5  }, //500kbps 48/6/( 1+12+3 ) = 0.5MHz
 	{ 10, 2, 3  }, //800kbps 48/4/( 1+11+3 ) = 0.8MHz
 	{ 11, 2, 2  }, //1000kbps
+   { 11, 2, 89 }, //33.3kpps
 };
 
 /** \brief Init can hardware with given baud rate
@@ -190,8 +214,9 @@ void Stm32Can::Send(uint32_t canId, uint32_t data[2], uint8_t len)
    {
       fdcan_enable_irq(canDev, FDCAN_ILE_INT1); //enable TX ints
    }
-}
 
+   ENABLE_CAN_USER_INTERRUPTS();
+}
 
 Stm32Can* Stm32Can::GetInterface(int index)
 {

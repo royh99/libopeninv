@@ -59,12 +59,13 @@ class CanMap: CanCallback
          uint8_t next;
       };
 
-      CanMap(CanHardware* hw, bool loadFromFlash = true);
+      explicit CanMap(CanHardware* hw, bool loadFromFlash = true);
       CanHardware* GetHardware() { return canHardware; }
       void HandleClear() override;
       void HandleRx(uint32_t canId, uint32_t data[2], uint8_t dlc) override;
       void Clear();
       void SendAll();
+      bool SendByIndex(uint8_t ididx);
       int AddSend(Param::PARAM_NUM param, uint32_t canId, uint8_t offsetBits, int8_t length, float gain);
       int AddRecv(Param::PARAM_NUM param, uint32_t canId, uint8_t offsetBits, int8_t length, float gain);
       int AddSend(Param::PARAM_NUM param, uint32_t canId, uint8_t offsetBits, int8_t length, float gain, int8_t offset);
@@ -95,8 +96,8 @@ class CanMap: CanCallback
       CANIDMAP canSendMap[MAX_MESSAGES];
       CANIDMAP canRecvMap[MAX_MESSAGES];
       CANPOS canPosMap[MAX_ITEMS + 1]; //Last item is a "tail"
-      uint32_t lastRxTimestamp;
 
+      bool Send(CANIDMAP *map);
       void ClearMap(CANIDMAP *canMap);
       int Add(CANIDMAP *canMap, Param::PARAM_NUM param, uint32_t canId, uint8_t offsetBits, int8_t length, float gain, int8_t offset);
       uint32_t SaveToFlash(uint32_t baseAddress, uint32_t* data, int len);
